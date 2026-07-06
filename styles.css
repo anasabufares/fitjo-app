@@ -525,3 +525,31 @@ input[type="time"].control { padding: 6px 8px; }
 .ct-photobtn { display: block; text-align: center; margin-top: 12px; padding: 11px;
   border: 2px dashed var(--border); border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 13px; }
 .ct-photobtn:hover { border-color: var(--accent); }
+
+/* ---------- role portals (coach / owner / staff / admin) ---------- */
+.portal-list { display: flex; flex-direction: column; }
+.portal-row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--border); }
+.pr-l { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.portal-av { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: #fff; font-weight: 800; font-size: 13px; flex-shrink: 0; }
+.pr-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.pr-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.pr-r { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.btn.sm { padding: 6px 10px; font-size: 12px; }
+.compose textarea { width: 100%; font-family: inherit; }
+.verify-demo { background: var(--surface-2); border: 1px dashed var(--border); border-radius: 10px;
+  padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
+.verify-demo b { font-size: 18px; letter-spacing: 3px; color: var(--accent); }
+
+/* ---------- points & rewards ---------- */
+.reward-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
+@media (min-width: 620px) { .reward-grid { grid-template-columns: repeat(3, 1fr); } }
+.reward-card { border: 1px solid var(--border); border-radius: 14px; padding: 12px; text-align: center;
+  background: var(--surface-2); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.reward-card.owned { opacity: .6; }
+.rw-ico { font-size: 26px; }
+.rw-name { font-size: 13px; font-weight: 700; line-height: 1.15; }
+.rw-from { font-size: 11px; color: var(--muted); }
+.rw-cost { font-size: 13px; font-weight: 800; color: var(--accent); margin: 4px 0; }
+.reward-card .btn { width: 100%; padding: 7px; font-size: 13px; }

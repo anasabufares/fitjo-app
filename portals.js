@@ -93,6 +93,7 @@ function navForRole(u) {
   return [
     ["profile", "👤", t("myProfile")], ["plan", "🎯", t("myPlan")],
     ["nutrition", "📷", t("calorieTracker")], ["progress", "📈", t("myProgress")],
+    ["points", "🏅", t("pointsRewards")], ["inbody", "🧬", t("inbodyScan")],
     ["security", "🔒", t("security")], ["email", "✉️", t("changeEmail")],
     ["privacy", "🛡️", t("privacy")], ["notifications", "🔔", t("notifications")],
     ["preferences", "⚙️", t("preferences")], ["danger", "⚠️", t("dangerZone")],

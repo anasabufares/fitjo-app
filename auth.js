@@ -74,6 +74,7 @@ function createUser(data, provider = "email") {
   const u = {
     id: "u" + Date.now(), name: data.name, email: data.email, pw: obf(data.pw || Math.random().toString(36)),
     age: data.age || 18, gender: "na", goal: "fit", city: "", createdAt: Date.now(),
+    role: data.role || "user", gymId: data.gymId || null, verified: !!data.verified, banned: false,
     twoFA: false, twoFASecret: null, recovery: [], passkeys: 0, provider,
     privacy: { profilePublic: true, showFav: false, trainerContact: true, shareData: true },
     notif: { offers: true, expiry: true, classes: true, news: false },
@@ -99,7 +100,7 @@ function renderAuthButton() {
 function openAuth(view) {
   if (view === "account" && !currentUser()) view = "signin";
   authView = view;
-  if (view === "account") acctSection = "profile";
+  if (view === "account") acctSection = (typeof defaultSectionForRole === "function" ? defaultSectionForRole(currentUser()) : "profile");
   if (typeof resetPlanEditing === "function") resetPlanEditing();
   if (typeof resetNutrition === "function") resetNutrition();
   document.getElementById("authBack").classList.add("open");
@@ -117,6 +118,7 @@ function requireAuth() {
 function renderAuthView() {
   const modal = document.getElementById("authModal");
   if (authView === "account") { modal.className = "auth-modal wide"; modal.innerHTML = accountHTML(); }
+  else if (authView === "verify") { modal.className = "auth-modal"; modal.innerHTML = verifyHTML(); }
   else { modal.className = "auth-modal"; modal.innerHTML = authView === "signup" ? signupHTML() : signinHTML(); }
 }
 
@@ -158,6 +160,14 @@ function signupHTML() {
     <div class="form-row"><label>${t("password")}</label><input id="inPassword" type="password" placeholder="••••••••"></div>
     <div class="form-row"><label>${t("confirmPassword")}</label><input id="inConfirm" type="password" placeholder="••••••••"></div>
   </div>
+  <div class="form-two">
+    <div class="form-row"><label>${t("accountType")}</label>
+      <select id="inRole">${["user", "coach", "staff", "owner", "admin"].map(r => `<option value="${r}">${roleIcon(r)} ${roleLabel(r)}</option>`).join("")}</select></div>
+    <div class="form-row"><label>${t("yourGym")}</label>
+      <select id="inGym">${GYMS.map(g => `<option value="${g.id}">${g.name[state.lang]}</option>`).join("")}</select></div>
+  </div>
+  <div class="form-row"><label>${t("accessCode")}</label><input id="inCode" placeholder="FITJO-ADMIN" autocomplete="off"></div>
+  <div class="note" style="margin:-4px 0 10px">${t("adminCodeHint")}</div>
   <label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:4px 0 12px">
     <input type="checkbox" id="agreeAge"> ${t("agreeAge")}</label>
   <button class="btn block" id="doSignUp">${t("signUp")}</button>
@@ -168,7 +178,7 @@ function signupHTML() {
 /* ---------- account shell ---------- */
 function accountHTML() {
   const u = currentUser();
-  const nav = [
+  const nav = (typeof navForRole === "function") ? navForRole(u) : [
     ["profile", "👤", t("myProfile")], ["plan", "🎯", t("myPlan")],
     ["nutrition", "📷", t("calorieTracker")], ["progress", "📈", t("myProgress")],
     ["security", "🔒", t("security")], ["email", "✉️", t("changeEmail")],
@@ -202,9 +212,15 @@ function reRenderSection() { document.getElementById("acctBody").innerHTML = sec
 /* ---------- sections ---------- */
 function sectionHTML(sec) {
   const u = currentUser();
+  if (sec === "coach" && typeof secCoach === "function") return secCoach(u);
+  if (sec === "owner" && typeof secOwner === "function") return secOwner(u);
+  if (sec === "staff" && typeof secStaff === "function") return secStaff(u);
+  if (sec === "admin" && typeof secAdmin === "function") return secAdmin(u);
   if (sec === "profile") return secProfile(u);
   if (sec === "plan" && typeof secPlan === "function") return secPlan(u);
   if (sec === "nutrition" && typeof secNutrition === "function") return secNutrition(u);
+  if (sec === "points" && typeof secPoints === "function") return secPoints(u);
+  if (sec === "inbody" && typeof secInbody === "function") return secInbody(u);
   if (sec === "progress") return secProgress(u);
   if (sec === "security") return secSecurity(u);
   if (sec === "email") return secEmail(u);
@@ -440,34 +456,71 @@ function disable2FA() {
 function addPasskey() { updateUser({ passkeys: currentUser().passkeys + 1 }); toast(t("saved")); reRenderSection(); }
 
 /* ---------- actions ---------- */
-function afterAuth() { closeAuth(); renderAll(); if (typeof startReminderScheduler === "function") startReminderScheduler(); const u = currentUser(); toast(`${t("hi")}, ${u.name.split(" ")[0]} 👋`); }
+function afterAuth() {
+  renderAll();
+  if (typeof startReminderScheduler === "function") startReminderScheduler();
+  const u = currentUser();
+  if (u && typeof isStaffRole === "function" && isStaffRole(u.role)) {
+    openAuth("account"); // lands on the role's portal (see openAuth default section)
+  } else {
+    closeAuth();
+  }
+  if (u) toast(`${t("hi")}, ${u.name.split(" ")[0]} 👋`);
+}
 
 function handleSignIn() {
   const email = val("inEmail").trim().toLowerCase(), pw = val("inPassword");
   if (!email || !pw) return showErr(t("fillAll"));
   const u = getUsers().find(x => x.email === email);
   if (!u || u.pw !== obf(pw)) return showErr(t("badLogin"));
-  setSession(email); afterAuth();
+  if (u.banned) return showErr(t("bannedMsg"));
+  setSession(email);
+  if (!u.verified) return startVerify();
+  afterAuth();
 }
 function handleSignUp() {
   const name = val("inName").trim(), email = val("inEmail").trim().toLowerCase();
   const ageStr = val("inAge"), age = parseInt(ageStr, 10), pw = val("inPassword"), cf = val("inConfirm");
   const agree = document.getElementById("agreeAge").checked;
+  const role = val("inRole") || "user", gymId = val("inGym") || null, code = (val("inCode") || "").trim();
   if (!name || !email || !ageStr || !pw) return showErr(t("fillAll"));
   if (!validEmail(email)) return showErr(t("emailInvalid"));
   if (!(age >= 12 && age <= 100)) return showErr(t("ageInvalid"));
   if (!agree) return showErr(t("ageInvalid"));
   if (pw.length < 6) return showErr(t("pwShort"));
   if (pw !== cf) return showErr(t("pwMismatch"));
+  if (role === "admin" && code !== ADMIN_CODE) return showErr(t("adminCodeHint"));
   if (getUsers().some(x => x.email === email)) return showErr(t("emailTaken"));
-  createUser({ name, email, age, pw }); setSession(email); afterAuth();
+  createUser({ name, email, age, pw, role, gymId }); setSession(email); startVerify();
 }
 function handleGoogle() {
   const email = "demo.user@gmail.com";
   let u = getUsers().find(x => x.email === email);
-  if (!u) u = createUser({ name: "Demo User", email, age: 25 }, "google");
+  if (!u) u = createUser({ name: "Demo User", email, age: 25, verified: true }, "google");
   setSession(email); afterAuth();
 }
+
+/* ---------- account verification (demo code) ---------- */
+let pendingCode = null;
+function genCode() { return String(Math.floor(100000 + Math.random() * 900000)); }
+function startVerify() { pendingCode = genCode(); authView = "verify"; renderAuthView(); }
+function verifyHTML() {
+  return `
+  <button class="auth-x" id="authX">✕</button>
+  <div class="auth-title">${t("verifyTitle")}</div>
+  <div class="auth-sub">${t("verifySub")}</div>
+  <div class="form-err" id="authErr"></div>
+  <div class="verify-demo">${t("verifyDemo")} <b>${pendingCode}</b></div>
+  <div class="form-row"><label>${t("verifyCodeLabel")}</label><input id="verifyCode" inputmode="numeric" maxlength="6" placeholder="123456"></div>
+  <button class="btn block" id="doVerify">${t("verifyBtn")}</button>
+  <div class="auth-foot"><button class="auth-link" id="resendCode">${t("verifyResend")}</button></div>`;
+}
+function doVerify() {
+  const code = (val("verifyCode") || "").trim();
+  if (code !== pendingCode) return showErr(t("verifyBad"));
+  updateUser({ verified: true }); pendingCode = null; toast(t("verifiedMsg")); afterAuth();
+}
+function resendCode() { pendingCode = genCode(); renderAuthView(); toast(t("verifyResend")); }
 function doLogout() { clearSession(); closeAuth(); renderAll(); toast(t("signOut")); }
 
 function saveProfile() {
@@ -516,6 +569,10 @@ function onAuthClick(e) {
   const hit = (s) => e.target.closest(s);
   if (typeof handlePlanClick === "function" && handlePlanClick(e)) return;
   if (typeof handleFoodClick === "function" && handleFoodClick(e)) return;
+  if (typeof handlePortalClick === "function" && handlePortalClick(e)) return;
+  if (typeof handleEngageClick === "function" && handleEngageClick(e)) return;
+  if (hit("#doVerify")) return doVerify();
+  if (hit("#resendCode")) return resendCode();
   if (hit("#authX")) return closeAuth();
   if (hit("#toSignUp")) return openAuth("signup");
   if (hit("#toSignIn")) return openAuth("signin");
@@ -545,6 +602,7 @@ function onAuthClick(e) {
 function onAuthChange(e) {
   if (typeof handlePlanChange === "function" && handlePlanChange(e)) return;
   if (typeof handleFoodChange === "function" && handleFoodChange(e)) return;
+  if (typeof handleEngageChange === "function" && handleEngageChange(e)) return;
   if (e.target.id === "avatarInput") {
     const file = e.target.files && e.target.files[0];
     if (file) resizeImage(file, 256, (dataUrl) => {

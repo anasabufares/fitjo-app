@@ -5,7 +5,8 @@
 
 $ErrorActionPreference = "Stop"
 $root   = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$prefix = "http://localhost:8080/"
+$port   = if ($env:PORT) { $env:PORT } else { 8080 }
+$prefix = "http://localhost:$port/"
 
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add($prefix)
