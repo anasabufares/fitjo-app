@@ -88,11 +88,11 @@ function navForRole(u) {
   if (u.role === "coach") return [["coach", "🧑‍🏫", t("coachPortal")], ...common];
   if (u.role === "owner") return [["owner", "🏢", t("ownerDash")], ...common];
   if (u.role === "staff") return [["staff", "🪪", t("staffDash")], ...common];
-  if (u.role === "admin") return [["admin", "🛠️", t("adminPortal")], ["owner", "🏢", t("ownerDash")], ...common];
   // regular member — full app
   return [
     ["profile", "👤", t("myProfile")], ["plan", "🎯", t("myPlan")],
     ["nutrition", "📷", t("calorieTracker")], ["progress", "📈", t("myProgress")],
+    ["rank", "🏆", t("rankTitle")],
     ["points", "🏅", t("pointsRewards")], ["inbody", "🧬", t("inbodyScan")],
     ["security", "🔒", t("security")], ["email", "✉️", t("changeEmail")],
     ["privacy", "🛡️", t("privacy")], ["notifications", "🔔", t("notifications")],

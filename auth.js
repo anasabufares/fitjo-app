@@ -14,8 +14,80 @@ let acctSection = "profile";
 let tempSecret = null;
 
 /* extra labels (profile photo + weight units) */
-Object.assign(I18N.en, { changePhoto: "Change photo", removePhoto: "Remove", lb: "lb" });
-Object.assign(I18N.ar, { changePhoto: "تغيير الصورة", removePhoto: "إزالة", lb: "رطل" });
+Object.assign(I18N.en, { changePhoto: "Change photo", removePhoto: "Remove", lb: "lb",
+  roleMismatch: "This account is registered as {role}. Pick that type to sign in.",
+  faceIdBtn: "Sign in with Face ID", faceId: "Face ID / biometric sign-in",
+  faceIdDesc: "Use your face or fingerprint instead of a password on this device.",
+  faceIdSetup: "Set up Face ID", faceIdRemove: "Remove", faceIdOn: "Face ID is on 🎉",
+  faceIdOff: "Face ID removed", faceIdScanning: "Confirming it's you…",
+  faceIdNone: "No Face ID on this account yet — sign in with your password once, then turn it on in Security.",
+  faceIdNeedEmail: "Type your email first so we know whose face to check.",
+  faceIdFail: "Face ID didn't work — use your password instead.",
+  memberOnlyView: "Sign in to view gym details and compare gyms." });
+Object.assign(I18N.ar, { changePhoto: "تغيير الصورة", removePhoto: "إزالة", lb: "رطل",
+  roleMismatch: "هذا الحساب مسجّل كـ {role}. اختر هذا النوع لتسجيل الدخول.",
+  faceIdBtn: "الدخول ببصمة الوجه", faceId: "بصمة الوجه / الدخول الحيوي",
+  faceIdDesc: "استخدم وجهك أو بصمتك بدل كلمة المرور على هذا الجهاز.",
+  faceIdSetup: "تفعيل بصمة الوجه", faceIdRemove: "إزالة", faceIdOn: "بصمة الوجه مفعّلة 🎉",
+  faceIdOff: "أُزيلت بصمة الوجه", faceIdScanning: "نتأكد أنه أنت…",
+  faceIdNone: "لا توجد بصمة وجه لهذا الحساب — سجّل بكلمة المرور مرة ثم فعّلها من الأمان.",
+  faceIdNeedEmail: "اكتب بريدك أولاً لنعرف وجه من نتحقق.",
+  faceIdFail: "لم تنجح بصمة الوجه — استخدم كلمة المرور.",
+  memberOnlyView: "سجّل الدخول لعرض تفاصيل الأندية والمقارنة." });
+
+/* ---------- biometric (Face ID / fingerprint) ----------
+   Uses the real device prompt (WebAuthn platform authenticator) when the
+   browser supports it; falls back to a demo scan when opened from file://.
+   Prototype note: the credential is checked on-device only (no server yet). */
+const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const b64buf = (s) => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+function webAuthnAvailable() { return !!(window.PublicKeyCredential && window.isSecureContext); }
+
+async function setupBiometric() {
+  const u = currentUser(); if (!u) return;
+  try {
+    if (webAuthnAvailable()) {
+      const cred = await navigator.credentials.create({ publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        rp: { name: "FitJo" },
+        user: { id: new TextEncoder().encode(u.email), name: u.email, displayName: u.name },
+        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+        timeout: 60000,
+      }});
+      updateUser({ bioId: b64(cred.rawId) });
+    } else {
+      updateUser({ bioId: "demo" }); // offline/file:// demo
+    }
+    localStorage.setItem("fj_lastBio", u.email);
+    toast(t("faceIdOn")); reRenderSection();
+  } catch (e) { toast(t("faceIdFail")); }
+}
+function removeBiometric() { updateUser({ bioId: null }); toast(t("faceIdOff")); reRenderSection(); }
+
+async function biometricSignIn() {
+  const email = (val("inEmail") || "").trim().toLowerCase() || localStorage.getItem("fj_lastBio") || "";
+  if (!email) return showErr(t("faceIdNeedEmail"));
+  const u = getUsers().find(x => x.email === email);
+  if (!u || !u.bioId) return showErr(t("faceIdNone"));
+  if (u.banned) return showErr(t("bannedMsg"));
+  toast(t("faceIdScanning"));
+  try {
+    if (u.bioId !== "demo" && webAuthnAvailable()) {
+      await navigator.credentials.get({ publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials: [{ type: "public-key", id: b64buf(u.bioId), transports: ["internal"] }],
+        userVerification: "required", timeout: 60000,
+      }});
+    } else {
+      await new Promise(r => setTimeout(r, 700)); // demo scan
+    }
+    localStorage.setItem("fj_lastBio", email);
+    setSession(email);
+    if (!u.verified) return startVerify();
+    afterAuth();
+  } catch (e) { showErr(t("faceIdFail")); }
+}
 
 /* Resize an uploaded image to a small square data URL (keeps localStorage tiny). */
 function resizeImage(file, max, cb) {
@@ -134,7 +206,10 @@ function signinHTML() {
   <div class="auth-title">${t("welcomeBack")}</div>
   <div class="auth-sub">FitJo · ${t("brandTag")}</div>
   <div class="form-err" id="authErr"></div>
+  <div class="form-row"><label>${t("signInAs")}</label>
+    <select id="inRoleSignin">${["user", "coach", "staff", "owner"].map(r => `<option value="${r}">${roleIcon(r)} ${roleLabel(r)}</option>`).join("")}</select></div>
   <button class="google-btn" id="googleBtn">${googleG()} ${t("continueGoogle")}</button>
+  <button class="google-btn faceid-btn" id="faceIdBtn"><span class="faceid-ico">🙂</span> ${t("faceIdBtn")}</button>
   <div class="divider">${t("orEmail")}</div>
   <div class="form-row"><label>${t("email")}</label><input id="inEmail" type="email" autocomplete="email" placeholder="you@email.com"></div>
   <div class="form-row"><label>${t("password")}</label><input id="inPassword" type="password" autocomplete="current-password" placeholder="••••••••"></div>
@@ -162,12 +237,10 @@ function signupHTML() {
   </div>
   <div class="form-two">
     <div class="form-row"><label>${t("accountType")}</label>
-      <select id="inRole">${["user", "coach", "staff", "owner", "admin"].map(r => `<option value="${r}">${roleIcon(r)} ${roleLabel(r)}</option>`).join("")}</select></div>
+      <select id="inRole">${["user", "coach", "staff", "owner"].map(r => `<option value="${r}">${roleIcon(r)} ${roleLabel(r)}</option>`).join("")}</select></div>
     <div class="form-row"><label>${t("yourGym")}</label>
       <select id="inGym">${GYMS.map(g => `<option value="${g.id}">${g.name[state.lang]}</option>`).join("")}</select></div>
   </div>
-  <div class="form-row"><label>${t("accessCode")}</label><input id="inCode" placeholder="FITJO-ADMIN" autocomplete="off"></div>
-  <div class="note" style="margin:-4px 0 10px">${t("adminCodeHint")}</div>
   <label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:4px 0 12px">
     <input type="checkbox" id="agreeAge"> ${t("agreeAge")}</label>
   <button class="btn block" id="doSignUp">${t("signUp")}</button>
@@ -219,6 +292,7 @@ function sectionHTML(sec) {
   if (sec === "profile") return secProfile(u);
   if (sec === "plan" && typeof secPlan === "function") return secPlan(u);
   if (sec === "nutrition" && typeof secNutrition === "function") return secNutrition(u);
+  if (sec === "rank" && typeof secRank === "function") return secRank(u);
   if (sec === "points" && typeof secPoints === "function") return secPoints(u);
   if (sec === "inbody" && typeof secInbody === "function") return secInbody(u);
   if (sec === "progress") return secProgress(u);
@@ -342,8 +416,11 @@ function secSecurity(u) {
   <div id="twoFABlock">${twoFA ? twoFAEnabledHTML(u) : `<button class="btn ghost" id="enable2fa">${t("enable")}</button>`}</div>
 
   <div class="set-row" style="margin-top:18px">
-    <div class="txt"><div class="t">${t("passkey")}${u.passkeys ? ` <span class="pill on">${u.passkeys}</span>` : ""}</div><div class="d">${t("passkeyDesc")}</div></div>
-    <button class="btn ghost" id="addPasskey">${t("addPasskey")}</button>
+    <div class="txt"><div class="t">🙂 ${t("faceId")} ${u.bioId ? `<span class="pill on">${t("enabled")}</span>` : `<span class="pill off">${t("disabled")}</span>`}</div>
+      <div class="d">${t("faceIdDesc")}</div></div>
+    ${u.bioId
+      ? `<button class="btn ghost" id="removeBio">${t("faceIdRemove")}</button>`
+      : `<button class="btn ghost" id="setupBio">${t("faceIdSetup")}</button>`}
   </div>`;
 }
 function twoFAEnabledHTML(u) {
@@ -372,7 +449,6 @@ function secNotif(u) {
   return `<h3>${t("notifications")}</h3><div class="h-sub">&nbsp;</div>` + rows.map(([k, l]) => toggleRow("notif", k, l, u.notif[k])).join("");
 }
 function secPrefs() {
-  const accents = { green: "#16a34a", blue: "#2563eb", violet: "#7c3aed", orange: "#ea580c" };
   const L = state.lang === "ar";
   return `<h3>${t("preferences")}</h3><div class="h-sub">&nbsp;</div>
   <div class="form-row"><label>${t("theme")}</label>
@@ -380,8 +456,6 @@ function secPrefs() {
       <button data-pref-theme="light" class="${state.theme === "light" ? "active" : ""}">☀️ ${L ? "فاتح" : "Light"}</button>
       <button data-pref-theme="dark" class="${state.theme === "dark" ? "active" : ""}">🌙 ${L ? "داكن" : "Dark"}</button>
     </div></div>
-  <div class="form-row"><label>${t("accentColor")}</label>
-    <div class="seg">${Object.entries(accents).map(([k, c]) => `<button data-pref-accent="${k}" class="${state.accent === k ? "active" : ""}" style="${state.accent === k ? `background:${c};color:#fff;border-color:${c}` : ""}">${k}</button>`).join("")}</div></div>
   <div class="form-row"><label>${t("language")}</label>
     <div class="seg">
       <button data-pref-lang="en" class="${state.lang === "en" ? "active" : ""}">English</button>
@@ -474,6 +548,8 @@ function handleSignIn() {
   const u = getUsers().find(x => x.email === email);
   if (!u || u.pw !== obf(pw)) return showErr(t("badLogin"));
   if (u.banned) return showErr(t("bannedMsg"));
+  const wantRole = val("inRoleSignin") || "user";
+  if ((u.role || "user") !== wantRole) return showErr(t("roleMismatch").replace("{role}", roleLabel(u.role || "user")));
   setSession(email);
   if (!u.verified) return startVerify();
   afterAuth();
@@ -482,7 +558,7 @@ function handleSignUp() {
   const name = val("inName").trim(), email = val("inEmail").trim().toLowerCase();
   const ageStr = val("inAge"), age = parseInt(ageStr, 10), pw = val("inPassword"), cf = val("inConfirm");
   const agree = document.getElementById("agreeAge").checked;
-  const role = val("inRole") || "user", gymId = val("inGym") || null, code = (val("inCode") || "").trim();
+  const role = val("inRole") || "user", gymId = val("inGym") || null;
   if (!name || !email || !ageStr || !pw) return showErr(t("fillAll"));
   if (!validEmail(email)) return showErr(t("emailInvalid"));
   if (!(age >= 12 && age <= 100)) return showErr(t("ageInvalid"));
@@ -571,6 +647,7 @@ function onAuthClick(e) {
   if (typeof handleFoodClick === "function" && handleFoodClick(e)) return;
   if (typeof handlePortalClick === "function" && handlePortalClick(e)) return;
   if (typeof handleEngageClick === "function" && handleEngageClick(e)) return;
+  if (typeof handleRankClick === "function" && handleRankClick(e)) return;
   if (hit("#doVerify")) return doVerify();
   if (hit("#resendCode")) return resendCode();
   if (hit("#authX")) return closeAuth();
@@ -591,7 +668,9 @@ function onAuthClick(e) {
   if (hit("#enable2fa")) return start2FA();
   if (hit("#verify2fa")) return verify2FA();
   if (hit("#disable2fa")) return disable2FA();
-  if (hit("#addPasskey")) return addPasskey();
+  if (hit("#faceIdBtn")) return void biometricSignIn();
+  if (hit("#setupBio")) return void setupBiometric();
+  if (hit("#removeBio")) return removeBiometric();
   if (hit("#deleteAcct")) return askDelete();
   if (hit("#confirmDelete")) return doDelete();
   if (hit("#cancelDelete")) return switchSection("danger");

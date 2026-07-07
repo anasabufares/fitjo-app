@@ -5,7 +5,7 @@
 const state = {
   lang: localStorage.getItem("fj_lang") || "en",
   theme: localStorage.getItem("fj_theme") || "light",
-  accent: localStorage.getItem("fj_accent") || "green",
+  accent: localStorage.getItem("fj_accent") || "violet",
   currency: localStorage.getItem("fj_cur") || "JOD",
   favorites: JSON.parse(localStorage.getItem("fj_favs") || "[]"),
   tab: "all",             // all | favorites
@@ -70,7 +70,6 @@ function applyChrome() {
   document.documentElement.setAttribute("dir", I18N[state.lang].dir);
   document.documentElement.setAttribute("lang", state.lang);
   document.body.setAttribute("data-theme", state.theme);
-  document.body.setAttribute("data-accent", state.accent);
 }
 
 /* ---------- Money ---------- */
@@ -133,13 +132,6 @@ function renderControls() {
   }
   cur.value = state.currency;
 
-  // accent swatches
-  const accents = { green: "#16a34a", blue: "#2563eb", violet: "#7c3aed", orange: "#ea580c" };
-  const accWrap = $("#accentPicker");
-  accWrap.innerHTML = Object.entries(accents).map(([k, c]) =>
-    `<button class="acc-dot ${state.accent === k ? "on" : ""}" data-accent="${k}"
-       style="width:20px;height:20px;border-radius:50%;border:2px solid ${state.accent === k ? "var(--text)" : "transparent"};background:${c};cursor:pointer" title="${k}"></button>`
-  ).join("");
 }
 
 /* ---------- Render: hero + labels ---------- */
@@ -312,7 +304,7 @@ function renderDetail(g) {
 
     <h1 style="margin-bottom:4px">${g.name[state.lang]}</h1>
     <div class="card-meta" style="margin-bottom:8px">📍 ${g.address[state.lang]} <span class="rating">★ ${g.rating}</span> <span style="color:var(--muted)">(${g.reviews} ${t("reviews")})</span></div>
-    <div>${g.open247 ? `<span class="offer" style="background:#16a34a;color:#fff;border-color:#16a34a">🕛 ${t("open247")}</span>` : ""}${offers}</div>
+    <div>${g.open247 ? `<span class="offer" style="background:var(--accent);color:#fff;border-color:var(--accent)">🕛 ${t("open247")}</span>` : ""}${offers}</div>
 
     <div class="detail-grid" style="margin-top:18px">
       <div>
@@ -480,11 +472,6 @@ function bind() {
   $("#langToggle").onclick = () => { state.lang = state.lang === "en" ? "ar" : "en"; persist(); state.view === "detail" ? (renderAll(), renderDetail(state.currentGym)) : renderAll(); };
   $("#themeToggle").onclick = () => { state.theme = state.theme === "light" ? "dark" : "light"; persist(); applyChrome(); renderControls(); };
   $("#currencySel").onchange = (e) => { state.currency = e.target.value; persist(); state.view === "detail" ? renderDetail(state.currentGym) : renderAll(); };
-  $("#accentPicker").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-accent]"); if (!b) return;
-    state.accent = b.dataset.accent; persist(); applyChrome(); renderControls();
-  });
-
   // search
   $("#searchInput").addEventListener("input", (e) => { state.filters.q = e.target.value; if (state.view === "detail") showList(); renderResults(); });
 
@@ -514,16 +501,22 @@ function bind() {
   $("#tabFav").onclick = () => { state.tab = "favorites"; showList(); renderResults(); };
 
   // grid + detail delegated clicks
+  const mustSignIn = () => {
+    if (typeof currentUser === "function" && currentUser()) return false;
+    toast(t("memberOnlyView"));
+    if (typeof openAuth === "function") openAuth("signin");
+    return true;
+  };
   document.body.addEventListener("click", (e) => {
     const favBtn = e.target.closest("[data-fav]");
     if (favBtn) { e.stopPropagation(); toggleFav(favBtn.dataset.fav); return; }
     const cmpBtn = e.target.closest("[data-cmp]");
-    if (cmpBtn) { e.stopPropagation(); toggleCompare(cmpBtn.dataset.cmp); return; }
-    if (e.target.closest("#cmpOpen")) { openCompare(); return; }
+    if (cmpBtn) { e.stopPropagation(); if (mustSignIn()) return; toggleCompare(cmpBtn.dataset.cmp); return; }
+    if (e.target.closest("#cmpOpen")) { if (mustSignIn()) return; openCompare(); return; }
     if (e.target.closest("#cmpClear")) { clearCompare(); return; }
     if (e.target.closest("#cmpClose")) { closeCompare(); return; }
     const openBtn = e.target.closest("[data-open]");
-    if (openBtn) { if ($("#cmpBack").classList.contains("open")) closeCompare(); openGym(openBtn.dataset.open); return; }
+    if (openBtn) { if (mustSignIn()) return; if ($("#cmpBack").classList.contains("open")) closeCompare(); openGym(openBtn.dataset.open); return; }
     if (e.target.closest("#backBtn")) { showList(); return; }
     if (e.target.closest("[data-openai]")) {
       if (typeof requireAuth === "function" && !requireAuth()) return;

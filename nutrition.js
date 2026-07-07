@@ -42,6 +42,7 @@ const NUT_I18N = {
     ctAdded: "Added to today 🍽️",
     ctRemoved: "Removed",
     ctTry: "Try it",
+    ctAmount: "Amount",
     ctSearchPh: "Search foods — chicken, water, sushi…",
     ctByPhoto: "📷 Add by photo (auto-guesses the food)",
     ctNoMatch: "No match. Try another word, or add by photo.",
@@ -70,6 +71,7 @@ const NUT_I18N = {
     ctAdded: "أُضيفت لليوم 🍽️",
     ctRemoved: "حُذفت",
     ctTry: "جرّبها",
+    ctAmount: "الكمية",
     ctSearchPh: "ابحث عن طعام — دجاج، ماء، سوشي…",
     ctByPhoto: "📷 أضف بصورة (تخمين تلقائي للطعام)",
     ctNoMatch: "لا نتائج. جرّب كلمة أخرى أو أضف بصورة.",
@@ -153,10 +155,45 @@ const FOODS = [
   { key: "baklava", emoji: "🍮", name: { en: "Baklava", ar: "بقلاوة" }, serving: { en: "1 piece", ar: "قطعة" }, kcal: 245, p: 4, c: 28, f: 14 },
 ];
 
+/* ---------- amounts & units ----------
+   Each food's nutrition is for 1 serving; FOOD_BASE says how much that
+   serving weighs (g) or measures (ml), so users can log real amounts in
+   g / kg / lb / ml / L. Unlisted foods default to 250 g. */
+const UNITS = { g: 1, kg: 1000, lb: 453.59, ml: 1, L: 1000 };
+const FOOD_BASE = {
+  water: [250, "ml"], coffee: [240, "ml"], tea: [240, "ml"], soda: [330, "ml"],
+  juice: [250, "ml"], milk: [250, "ml"], latte: [300, "ml"], protein_shake: [300, "ml"],
+  whey: [30, "g"], chicken_rice: [400, "g"], shawarma: [250, "g"], falafel: [300, "g"],
+  hummus: [250, "g"], mansaf: [450, "g"], maqluba: [400, "g"], eggs: [165, "g"],
+  oats: [240, "g"], banana: [118, "g"], apple: [180, "g"], greek_yogurt: [170, "g"],
+  salad: [150, "g"], salmon: [180, "g"], beef_steak: [220, "g"], pasta: [350, "g"],
+  pizza: [220, "g"], burger: [250, "g"], nuts: [30, "g"], rice: [200, "g"],
+  pita: [90, "g"], avocado: [100, "g"], tuna: [120, "g"], potato: [170, "g"],
+  kunafa: [150, "g"], dates: [72, "g"], chicken_breast: [170, "g"], egg_boiled: [50, "g"],
+  sushi: [180, "g"], shrimp: [100, "g"], turkey: [100, "g"], tofu: [100, "g"],
+  lentils: [250, "g"], chickpeas: [160, "g"], noodles: [300, "g"], bread: [60, "g"],
+  fries: [115, "g"], cereal: [240, "g"], kebab: [120, "g"], mixed_grill: [350, "g"],
+  fried_chicken: [200, "g"], sandwich: [220, "g"], chicken_salad: [250, "g"], wrap: [250, "g"],
+  orange: [130, "g"], grapes: [150, "g"], protein_bar: [60, "g"], chips: [30, "g"],
+  chocolate: [45, "g"], ice_cream: [65, "g"], cheese: [25, "g"], labneh: [60, "g"],
+  peanut_butter: [32, "g"], baklava: [60, "g"],
+};
+function foodBase(key) { return FOOD_BASE[key] || [250, "g"]; }
+const fmtAmt = (n) => Number(n.toFixed(2));
+
 /* ---------- transient scan state (not persisted) ---------- */
-let nScan = { status: "idle", previewURL: null, base: null, portion: 1 };
+let nScan = { status: "idle", previewURL: null, base: null, amount: 0, unit: "g", baseAmt: 250, baseUnit: "g" };
 let nQuery = "";
-function resetNutrition() { nScan = { status: "idle", previewURL: null, base: null, portion: 1 }; nQuery = ""; }
+function resetNutrition() { nScan = { status: "idle", previewURL: null, base: null, amount: 0, unit: "g", baseAmt: 250, baseUnit: "g" }; nQuery = ""; }
+function setScanFood(base, previewURL) {
+  const [amt, unit] = foodBase(base.key);
+  nScan = { status: "result", previewURL: previewURL || null, base, amount: amt, unit, baseAmt: amt, baseUnit: unit };
+}
+function scanMult() {
+  const want = (nScan.amount || 0) * UNITS[nScan.unit];
+  const base = nScan.baseAmt * UNITS[nScan.baseUnit];
+  return base > 0 ? want / base : 0;
+}
 
 /* ---------- helpers ---------- */
 function todayKey(d = new Date()) {
@@ -280,21 +317,24 @@ function scannerHTML() {
     </div>`;
   }
   if (nScan.status === "result" && nScan.base) {
-    const b = nScan.base, s = scaled(b, nScan.portion);
+    const b = nScan.base, s = scaled(b, scanMult());
     const tag = b.source === "ai"
       ? `<span class="ct-conf ai">${t("ctAiNote")}</span>`
       : (b.confidence != null ? `<span class="ct-conf">${b.confidence}% ${t("ctConfidence")}</span>` : "");
-    const portions = [0.5, 1, 1.5, 2, 3];
     return `<div class="section ct-scan">
       <div class="ct-result">
         ${nScan.previewURL ? `<div class="ct-preview sm"><img src="${nScan.previewURL}" alt=""></div>` : ""}
         <div class="ct-rbody">
           <div class="ct-detected"><span class="fr-emo">${b.emoji}</span> <b>${b.name[state.lang]}</b> ${tag}</div>
           <div class="ct-serving">${b.serving[state.lang]}</div>
-          <div class="ct-kcal"><span>${s.kcal}</span> ${t("kcal")}</div>
-          <div class="ct-macmini">${t("protein")} ${s.p}g · ${t("carbs")} ${s.c}g · ${t("fat")} ${s.f}g</div>
-          <div class="ct-portion"><span class="ct-plabel">${t("ctPortion")}</span>
-            ${portions.map(p => `<button class="chip ${nScan.portion === p ? "active" : ""}" data-portion="${p}">${p}×</button>`).join("")}</div>
+          <div class="ct-kcal"><span id="ctKcalVal">${s.kcal}</span> ${t("kcal")}</div>
+          <div class="ct-macmini" id="ctMacMini">${t("protein")} ${s.p}g · ${t("carbs")} ${s.c}g · ${t("fat")} ${s.f}g</div>
+          <div class="ct-portion">
+            <span class="ct-plabel">${t("ctAmount")}</span>
+            <input id="ctAmount" class="control ct-amt" type="number" min="0" step="any" value="${fmtAmt(nScan.amount)}">
+            <select class="control" data-food="unit">${Object.keys(UNITS).map(u => `<option value="${u}"${nScan.unit === u ? " selected" : ""}>${u}</option>`).join("")}</select>
+            <small class="ct-basehint">${b.serving[state.lang]} ≈ ${nScan.baseAmt} ${nScan.baseUnit}</small>
+          </div>
           <div class="ct-correct"><label>${t("ctNotRight")}</label><select data-food="pick">${foodOptions(b.key)}</select></div>
           <div class="ct-actions">
             <button class="btn" id="foodAdd">${t("ctAddDay")}</button>
@@ -318,7 +358,7 @@ function todayListHTML(today, tot) {
   return `<div class="section"><h4>🗓️ ${t("ctToday")}</h4>
     ${today.map(x => `<div class="food-row">
       <div class="fr-l"><span class="fr-emo">${x.emoji}</span>
-        <div><div class="fr-name">${x.name[state.lang]}${x.portion !== 1 ? ` <small>×${x.portion}</small>` : ""}</div>
+        <div><div class="fr-name">${x.name[state.lang]}${x.amountLabel ? ` <small>${x.amountLabel}</small>` : (x.portion !== 1 ? ` <small>×${x.portion}</small>` : "")}</div>
           <div class="fr-mac">${t("protein")} ${x.p} · ${t("carbs")} ${x.c} · ${t("fat")} ${x.f} g</div></div></div>
       <div class="fr-r"><b>${x.kcal}</b> <small>${t("kcal")}</small>
         <button class="auth-link fr-del" data-delfood="${x.id}" aria-label="remove">✕</button></div>
@@ -357,10 +397,14 @@ function secNutrition(u) {
 /* ---------- actions ---------- */
 function foodAdd() {
   const u = currentUser(); if (!u || !nScan.base) return;
-  const b = nScan.base, s = scaled(b, nScan.portion);
+  const mult = scanMult();
+  if (mult <= 0) return;
+  const b = nScan.base, s = scaled(b, mult);
   const log = { ...(u.food || {}) }, k = todayKey();
   const list = (log[k] || []).slice();
-  list.push({ id: "f" + Date.now() + Math.floor(Math.random() * 1000), emoji: b.emoji, name: b.name, portion: nScan.portion, kcal: s.kcal, p: s.p, c: s.c, f: s.f, source: b.source, ts: Date.now() });
+  list.push({ id: "f" + Date.now() + Math.floor(Math.random() * 1000), emoji: b.emoji, name: b.name,
+    portion: fmtAmt(mult), amountLabel: `${fmtAmt(nScan.amount)} ${nScan.unit}`,
+    kcal: s.kcal, p: s.p, c: s.c, f: s.f, source: b.source, ts: Date.now() });
   log[k] = list; updateUser({ food: log });
   resetNutrition(); reRenderSection(); toast(t("ctAdded"));
 }
@@ -377,10 +421,9 @@ function handleFoodClick(e) {
   const pick = hit("[data-food-pick]");
   if (pick) {
     const food = FOODS.find(x => x.key === pick.dataset.foodPick);
-    if (food) { nScan = { status: "result", previewURL: null, base: toBase(food), portion: 1 }; reRenderSection(); }
+    if (food) { setScanFood(toBase(food)); reRenderSection(); }
     return true;
   }
-  const p = hit("[data-portion]"); if (p) { nScan.portion = parseFloat(p.dataset.portion) || 1; reRenderSection(); return true; }
   if (hit("#foodAdd")) { foodAdd(); return true; }
   if (hit("#foodDiscard")) { resetNutrition(); reRenderSection(); return true; }
   const df = hit("[data-delfood]"); if (df) { foodRemove(df.dataset.delfood); return true; }
@@ -393,10 +436,10 @@ function handleFoodChange(e) {
     if (!file) return true;
     const reader = new FileReader();
     reader.onload = () => {
-      nScan = { status: "analyzing", previewURL: reader.result, base: null, portion: 1 };
+      nScan = { status: "analyzing", previewURL: reader.result, base: null, amount: 0, unit: "g", baseAmt: 250, baseUnit: "g" };
       reRenderSection();
       analyzeFood(file)
-        .then(base => { nScan.base = base; nScan.portion = 1; nScan.status = "result"; reRenderSection(); })
+        .then(base => { setScanFood(base, reader.result); reRenderSection(); })
         .catch(() => { resetNutrition(); reRenderSection(); toast("⚠️"); });
     };
     reader.readAsDataURL(file);
@@ -404,7 +447,15 @@ function handleFoodChange(e) {
   }
   if (el.dataset.food === "pick") {
     const food = FOODS.find(x => x.key === el.value);
-    if (food) { nScan.base = toBase(food); reRenderSection(); }
+    if (food) { setScanFood(toBase(food), nScan.previewURL); reRenderSection(); }
+    return true;
+  }
+  if (el.dataset.food === "unit") {
+    // keep the same physical quantity, expressed in the new unit
+    const canonical = (nScan.amount || 0) * UNITS[nScan.unit];
+    nScan.unit = el.value;
+    nScan.amount = fmtAmt(canonical / UNITS[nScan.unit]);
+    reRenderSection();
     return true;
   }
   return false;
@@ -419,6 +470,14 @@ document.addEventListener("DOMContentLoaded", () => {
       nQuery = e.target.value;
       const box = document.getElementById("ctFoodResults");
       if (box) box.innerHTML = foodResultsHTML();
+    }
+    if (e.target && e.target.id === "ctAmount" && nScan.base) {
+      nScan.amount = parseFloat(e.target.value) || 0;
+      const s = scaled(nScan.base, scanMult());
+      const kcalEl = document.getElementById("ctKcalVal");
+      const macEl = document.getElementById("ctMacMini");
+      if (kcalEl) kcalEl.textContent = s.kcal;
+      if (macEl) macEl.textContent = `${t("protein")} ${s.p}g · ${t("carbs")} ${s.c}g · ${t("fat")} ${s.f}g`;
     }
   });
 });

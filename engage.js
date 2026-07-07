@@ -63,17 +63,19 @@ const ENGAGE_I18N = {
 Object.assign(I18N.en, ENGAGE_I18N.en);
 Object.assign(I18N.ar, ENGAGE_I18N.ar);
 
-const CHECKIN_POINTS = 50;
-const MISS_PENALTY = 10;
+/* Earning is deliberately slow: ~7-10 pts per verified visit, -5 per missed
+   day. Rewards keep their prices, so a free shake ≈ a month of training. */
+const CHECKIN_POINTS = 10;
+const MISS_PENALTY = 5;
 
 /* rewards catalogue */
 const REWARDS = [
-  { key: "water", emoji: "💧", cost: 100, name: { en: "Free water bottle", ar: "قنينة ماء مجانية" }, from: { en: "Gym café", ar: "كافيه النادي" } },
+  { key: "preworkout", emoji: "⚡", cost: 100, name: { en: "Free pre-workout", ar: "بري وورك آوت مجاني" }, from: { en: "Gym café", ar: "كافيه النادي" } },
   { key: "shake", emoji: "🥤", cost: 300, name: { en: "Free protein shake", ar: "بروتين شيك مجاني" }, from: { en: "Gym café", ar: "كافيه النادي" } },
   { key: "sportswear10", emoji: "👕", cost: 500, name: { en: "20% off sportswear", ar: "خصم 20% على الملابس الرياضية" }, from: { en: "Sports shop", ar: "متجر رياضي" } },
   { key: "tshirt", emoji: "🎽", cost: 800, name: { en: "Free FitJo T-shirt", ar: "تيشيرت FitJo مجاني" }, from: { en: "Sports shop", ar: "متجر رياضي" } },
   { key: "shoes", emoji: "👟", cost: 1500, name: { en: "30% off running shoes", ar: "خصم 30% على أحذية الجري" }, from: { en: "Sports shop", ar: "متجر رياضي" } },
-  { key: "month", emoji: "🎟️", cost: 2500, name: { en: "1 month free membership", ar: "شهر عضوية مجاني" }, from: { en: "Your gym", ar: "ناديك" } },
+  { key: "month", emoji: "🎟️", cost: 2500, name: { en: "3 months free membership", ar: "3 أشهر عضوية مجانية" }, from: { en: "Your gym", ar: "ناديك" } },
 ];
 
 /* transient scan state */
@@ -255,7 +257,7 @@ function doCheckin(file) {
   verifyGym(file).then(r => {
     nCheck.status = "idle";
     if (!r.real) { reRenderSection(); toast(t("fakeGymMsg")); return; }
-    const award = Math.round(CHECKIN_POINTS * (r.confidence / 100) / 5) * 5;
+    const award = Math.max(5, Math.round(CHECKIN_POINTS * (r.confidence / 100)));
     const cur = currentUser();
     const dates = (cur.checkinDates || []).concat([today]);
     updateUser({ points: (cur.points || 0) + award, checkinDates: dates, lastCheckin: today, pointsThru: today });
