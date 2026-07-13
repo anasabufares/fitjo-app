@@ -1,0 +1,16 @@
+{
+  "appId": "com.gymora.app",
+  "appName": "GYMORA",
+  "webDir": "www",
+  "backgroundColor": "#0a0a0a",
+  "server": {
+    "url": "https://fitjordan.netlify.app",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "automatic"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
