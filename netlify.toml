@@ -1,10 +1,11 @@
 # Netlify configuration for GYMORA.
-# The site is plain HTML/CSS/JS served from the repo root — there is no
-# build step and no "public" folder, so publish the root directly.
-# This file overrides any publish directory set in the Netlify UI.
+# The site is plain HTML/CSS/JS with no build step. The build command
+# copies the site files into public/ and we publish that folder — this
+# matches the site's expected deploy directory on Netlify.
 
 [build]
-  publish = "."
+  command = "rm -rf public && mkdir public && cp index.html styles.css manifest.json app.js auth.js data.js engage.js nutrition.js plan.js portals.js rank.js shop.js workouts.js icon-180.png icon-192.png icon-512.png logo.png public/"
+  publish = "public"
 
 [functions]
   directory = "netlify/functions"
