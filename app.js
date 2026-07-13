@@ -237,7 +237,7 @@ function cardHTML(g) {
   return `
   <div class="card" data-open="${g.id}">
     <div class="card-media ${g.gradient}">
-      <span class="media-emoji">🏋️</span>
+      <span class="media-mono">${(g.name.en || "G").trim()[0].toUpperCase()}</span>
       <div class="badges">
         <span class="badge">${accessLabel}${g.pool ? " · 🏊" : ""}</span>
         ${g.open247 ? `<span class="badge badge-247">🕛 ${t("h247")}</span>` : ""}
@@ -302,7 +302,7 @@ function renderDetail(g) {
   el.innerHTML = `
     <button class="backbtn" id="backBtn">← ${t("back")}</button>
     <div class="detail-hero ${g.gradient}">
-      <span class="media-emoji">🏋️</span>
+      <span class="media-mono">${(g.name.en || "G").trim()[0].toUpperCase()}</span>
       <button class="fav ${isFav ? "on" : ""}" data-fav="${g.id}" style="top:12px;inset-inline-end:12px">${isFav ? "♥" : "♡"}</button>
     </div>
 
@@ -404,11 +404,12 @@ function openGym(id) {
 let featureSection = null;
 function renderCats() {
   const el = $("#catStrip"); if (!el) return;
+  const ico = (paths) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
   const cats = [
-    ["gyms", "🏋️", t("catGyms")],
-    ["nutrition", "🍎", t("catNutrition")],
-    ["supps", "💊", t("catSupps")],
-    ["rank", "🏆", t("catRank")],
+    ["gyms", ico('<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/>'), t("catGyms")],
+    ["nutrition", ico('<path d="M12 7.5C8.8 5.6 5 8 5 11.8 5 15.9 8.4 20 12 20s7-4.1 7-8.2c0-3.8-3.8-6.2-7-4.3z"/><path d="M12 7.5c0-2.2 1.2-3.6 3-4.5"/>'), t("catNutrition")],
+    ["supps", ico('<rect x="3.5" y="8.5" width="17" height="7" rx="3.5" transform="rotate(-25 12 12)"/><path d="M8.9 15.1l6.2-6.2"/>'), t("catSupps")],
+    ["rank", ico('<path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H5.2A2.8 2.8 0 0 0 8 9M16 5h2.8A2.8 2.8 0 0 1 16 9M12 13v3.5M8.5 20h7M10 16.5h4v3.5h-4z"/>'), t("catRank")],
   ];
   const active = featureSection || "gyms";
   el.innerHTML = cats.map(([k, ic, l]) => `

@@ -810,3 +810,74 @@ h1, .hero h1, .acct-body h3 { letter-spacing: -.02em; font-weight: 900; }
   background: linear-gradient(180deg, #161816, #121312);
 }
 [data-theme="dark"] .topbar { border-bottom-color: #222522; }
+
+/* =============================================================
+   MODERN UI v2 — icon system, card art, brand pattern
+   ============================================================= */
+
+/* Category tiles: crisp line icons instead of emoji */
+.cat-circle svg { width: 26px; height: 26px; color: var(--muted); transition: color .15s; }
+.cat:hover .cat-circle svg { color: var(--accent); }
+.cat.on .cat-circle svg { color: #fff; }
+@media (min-width: 700px) { .cat-circle svg { width: 30px; height: 30px; } }
+
+/* Card art: italic monogram + diagonal brand stripes (like the logo) */
+.card-media, .detail-hero { position: relative; overflow: hidden; }
+.card-media::before, .detail-hero::before {
+  content: ""; position: absolute; inset: -20%;
+  background: repeating-linear-gradient(115deg,
+    transparent 0 26px, rgba(255, 255, 255, .07) 26px 34px,
+    transparent 34px 70px, rgba(0, 0, 0, .10) 70px 78px);
+}
+.media-mono {
+  position: relative; z-index: 1;
+  font-size: 64px; font-weight: 900; font-style: italic;
+  letter-spacing: -.04em; line-height: 1;
+  color: rgba(255, 255, 255, .92);
+  text-shadow: 0 6px 24px rgba(0, 0, 0, .35);
+  transform: skewX(-6deg);
+}
+.detail-hero .media-mono { font-size: 96px; }
+
+/* Frosted-glass favorite button */
+.fav {
+  background: rgba(10, 10, 10, .35) !important;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, .25) !important;
+  color: #fff; border-radius: 999px;
+}
+.fav.on { background: #fff !important; color: #ef4444; border-color: #fff !important; }
+
+/* Facility emoji → quiet chips */
+.facil {
+  font-size: 13px; padding: 4px 7px; border-radius: 9px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  line-height: 1;
+}
+
+/* Hero: brand accent pattern in the corner (from the GYMORA brand kit) */
+.hero::after {
+  content: ""; position: absolute; top: -30px; inset-inline-end: -40px;
+  width: 340px; height: 220px; pointer-events: none; opacity: .5;
+  background: repeating-linear-gradient(115deg,
+    transparent 0 34px, color-mix(in srgb, var(--accent) 55%, transparent) 34px 44px,
+    transparent 44px 78px, color-mix(in srgb, var(--text) 18%, transparent) 78px 84px);
+  mask-image: linear-gradient(215deg, #000 30%, transparent 75%);
+  -webkit-mask-image: linear-gradient(215deg, #000 30%, transparent 75%);
+}
+
+/* Badges on card art: frosted pills */
+.badge {
+  background: rgba(10, 10, 10, .45) !important;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 999px; color: #fff;
+}
+.badge-247 { background: color-mix(in srgb, var(--accent) 85%, #000) !important; border-color: transparent; }
+
+/* Section headings: modern eyebrow style */
+.section h4 { color: var(--muted); }
+
+/* Tabs pill container matches surface */
+.tabs { padding: 4px; }
+.tab.active { background: var(--accent); color: #fff; box-shadow: none; }
