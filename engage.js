@@ -205,7 +205,11 @@ function secPoints(u) {
   <div class="section">
     <h4>🗓️ ${t("recentCheckins")}</h4>
     ${dates.length
-      ? dates.slice().reverse().slice(0, 10).map(d => `<div class="kv"><span>✅ ${t("verifiedGym")}</span><span>${histDate(d)}</span></div>`).join("")
+      ? dates.slice().reverse().slice(0, 10).map(d => {
+          const gid = (u.checkinGyms || {})[d];
+          const g = gid && GYMS.find(x => x.id === gid);
+          return `<div class="kv"><span>✅ ${g ? esc(g.name[state.lang]) : t("verifiedGym")}</span><span>${histDate(d)}</span></div>`;
+        }).join("")
       : `<div class="note">${t("noCheckins")}</div>`}
   </div>
   <div class="note">${t("demoNote")}</div>`;
@@ -299,16 +303,94 @@ function handleEngageChange(e) {
   return false;
 }
 
-/* ---------- quick check-in FAB (one tap from anywhere) ---------- */
+/* ---------- quick check-in FAB: location first, photo fallback ---------- */
+Object.assign(I18N.en, {
+  locChecking: "Checking your location…",
+  locCheckedIn: "Checked in at {gym}! +{n} points 📍",
+  locFar: "You don't seem to be at a partner gym — verify with a photo instead.",
+  locNoPos: "Couldn't get your location — tap again to check in with a gym photo.",
+});
+Object.assign(I18N.ar, {
+  locChecking: "نتحقق من موقعك…",
+  locCheckedIn: "تم تسجيل الحضور في {gym}! +{n} نقطة 📍",
+  locFar: "يبدو أنك لست في نادٍ شريك — تحقّق بصورة بدلاً من ذلك.",
+  locNoPos: "تعذّر تحديد موقعك — اضغط مرة أخرى لتسجيل الحضور بصورة من النادي.",
+});
+
+const CHECKIN_RADIUS_KM = 0.6; // how close to a gym counts as "there"
+
+function getPosition() {
+  return new Promise((res) => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; res(v); } };
+    if (!("geolocation" in navigator)) return finish(null);
+    // Hard cap: also covers a permission prompt the user never answers,
+    // where the browser calls neither callback.
+    setTimeout(() => finish(null), 8000);
+    navigator.geolocation.getCurrentPosition(
+      (p) => finish({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => finish(null),
+      { enableHighAccuracy: true, timeout: 7000, maximumAge: 120000 }
+    );
+  });
+}
+function distKm(a, b) {
+  const R = 6371, rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+function nearestGym(pos) {
+  let best = null;
+  for (const g of GYMS) {
+    if (!g.loc) continue;
+    const km = distKm(pos, g.loc);
+    if (!best || km < best.km) best = { gym: g, km };
+  }
+  return best;
+}
+function awardLocationCheckin(gym) {
+  const today = todayKey();
+  const cur = currentUser();
+  const dates = (cur.checkinDates || []).concat([today]);
+  const gyms = { ...(cur.checkinGyms || {}), [today]: gym.id };
+  updateUser({
+    points: (cur.points || 0) + CHECKIN_POINTS,
+    checkinDates: dates, checkinGyms: gyms,
+    lastCheckin: today, pointsThru: today,
+  });
+  reRenderSection();
+  toast(t("locCheckedIn").replace("{gym}", gym.name[state.lang]).replace("{n}", CHECKIN_POINTS));
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const fab = document.getElementById("quickCheckin");
   const input = document.getElementById("quickCheckinInput");
   if (!fab || !input) return;
-  fab.addEventListener("click", () => {
+  let photoFallbackArmed = false;
+  fab.addEventListener("click", async () => {
     if (typeof requireAuth === "function" && !requireAuth()) return;
     const u = currentUser();
     if ((u.checkinDates || []).includes(todayKey())) { toast(t("alreadyMsg")); return; }
-    input.click(); // straight to the camera
+    // A previous tap couldn't get a location → this tap goes straight to the camera.
+    if (photoFallbackArmed) { photoFallbackArmed = false; input.click(); return; }
+    // 1) Try GPS: at a partner gym → instant check-in, no photo needed.
+    fab.classList.add("busy");
+    toast(t("locChecking"));
+    const pos = await getPosition();
+    fab.classList.remove("busy");
+    if (pos) {
+      const near = nearestGym(pos);
+      if (near && near.km <= CHECKIN_RADIUS_KM) return awardLocationCheckin(near.gym);
+      // Position known but not at a gym → photo verification (same tap still counts as a gesture).
+      toast(t("locFar"));
+      input.click();
+      return;
+    }
+    // 2) No location (denied/unavailable) — the tap's gesture window has likely
+    //    expired, so arm the next tap to open the camera directly.
+    photoFallbackArmed = true;
+    toast(t("locNoPos"));
   });
   input.addEventListener("change", () => {
     const f = input.files && input.files[0];
