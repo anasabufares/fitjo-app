@@ -20,20 +20,22 @@ const CURRENCIES = {
   EGP: { rate: 69,     symbol: "E£",  en: "Egyptian Pound",  ar: "جنيه مصري" },
 };
 
-/* ---- Facilities catalogue (used by filters + cards) ---- */
+/* ---- Facilities catalogue (used by filters + cards) ----
+   Icons are inline SVG line icons (stroke follows text color). */
+const FICO = (p) => `<svg class="fico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const FACILITIES = {
-  weights:  { en: "Free Weights",      ar: "أوزان حرة",       icon: "🏋️" },
-  cardio:   { en: "Cardio Zone",       ar: "منطقة كارديو",     icon: "🏃" },
-  pool:     { en: "Swimming Pool",     ar: "مسبح",             icon: "🏊" },
-  sauna:    { en: "Sauna & Steam",     ar: "ساونا وبخار",      icon: "🧖" },
-  classes:  { en: "Group Classes",     ar: "حصص جماعية",       icon: "🧘" },
-  crossfit: { en: "CrossFit Box",      ar: "كروس فيت",         icon: "💪" },
-  boxing:   { en: "Boxing",            ar: "ملاكمة",           icon: "🥊" },
-  parking:  { en: "Free Parking",      ar: "موقف مجاني",       icon: "🅿️" },
-  lockers:  { en: "Lockers",           ar: "خزائن",            icon: "🔒" },
-  showers:  { en: "Showers",           ar: "دشات",             icon: "🚿" },
-  cafe:     { en: "Juice / Café",      ar: "بار عصير / كافيه", icon: "🥤" },
-  physio:   { en: "Physiotherapy",     ar: "علاج طبيعي",       icon: "🩺" },
+  weights:  { en: "Free Weights",      ar: "أوزان حرة",       icon: FICO('<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/>') },
+  cardio:   { en: "Cardio Zone",       ar: "منطقة كارديو",     icon: FICO('<path d="M3 12h4l2.5-5 4 10 2.5-5h5"/>') },
+  pool:     { en: "Swimming Pool",     ar: "مسبح",             icon: FICO('<path d="M3 15c2 1.6 4 1.6 6 0s4-1.6 6 0 4 1.6 6 0M3 19c2 1.6 4 1.6 6 0s4-1.6 6 0 4 1.6 6 0"/><circle cx="16" cy="7" r="2"/>') },
+  sauna:    { en: "Sauna & Steam",     ar: "ساونا وبخار",      icon: FICO('<path d="M7 4c-1.5 2 1.5 3-.2 5M12 4c-1.5 2 1.5 3-.2 5M17 4c-1.5 2 1.5 3-.2 5"/><path d="M4 13h16v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-3z"/>') },
+  classes:  { en: "Group Classes",     ar: "حصص جماعية",       icon: FICO('<circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9.5" r="2.4"/><path d="M3.5 20c.5-3.5 2.5-5 4.5-5s4 1.5 4.5 5M13.5 19.5c.4-2.6 1.7-3.9 3-3.9s2.7 1.3 3.1 3.9"/>') },
+  crossfit: { en: "CrossFit Box",      ar: "كروس فيت",         icon: FICO('<path d="M9 8V6a3 3 0 0 1 6 0v2"/><path d="M7.5 8h9l1.8 8a4 4 0 0 1-3.9 5h-4.8a4 4 0 0 1-3.9-5l1.8-8z"/>') },
+  boxing:   { en: "Boxing",            ar: "ملاكمة",           icon: FICO('<path d="M6 10V7a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v5a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5v-2z"/><path d="M6 10h6M10 21h6"/>') },
+  parking:  { en: "Free Parking",      ar: "موقف مجاني",       icon: FICO('<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M10 16V8h2.8a2.6 2.6 0 0 1 0 5.2H10"/>') },
+  lockers:  { en: "Lockers",           ar: "خزائن",            icon: FICO('<rect x="4.5" y="10" width="15" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14.5v2"/>') },
+  showers:  { en: "Showers",           ar: "دشات",             icon: FICO('<path d="M8 15a6 6 0 0 1 8-8"/><path d="M5 5l3 3"/><path d="M11 17l-.6 2M14 16l-.6 2M17 14.5l-.6 2M8 17.5l-.6 2"/>') },
+  cafe:     { en: "Juice / Café",      ar: "بار عصير / كافيه", icon: FICO('<path d="M7 4h10l-1.5 16h-7L7 4z"/><path d="M8 9h8M13.5 4l1-2"/>') },
+  physio:   { en: "Physiotherapy",     ar: "علاج طبيعي",       icon: FICO('<path d="M12 20s-6.5-4-8.5-8A4.6 4.6 0 0 1 12 7.5 4.6 4.6 0 0 1 20.5 12c-2 4-8.5 8-8.5 8z"/><path d="M7 12h3l1.5-2.5 2 4L15 11h2"/>') },
 };
 
 /* ---- UI text in both languages ---- */
