@@ -18,6 +18,26 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body data-theme="dark">
+  <!-- Splash screen (shown once per session, fades out after load) -->
+  <div id="splash" aria-hidden="true">
+    <img src="logo-mark.png" alt="" width="96" height="96" />
+    <div class="splash-name">GYMORA</div>
+    <div class="splash-tag">Optimize. Recover. Achieve.</div>
+  </div>
+  <script>
+    (function () {
+      var s = document.getElementById("splash");
+      if (sessionStorage.getItem("gym_splashed")) { s.remove(); return; }
+      sessionStorage.setItem("gym_splashed", "1");
+      window.addEventListener("load", function () {
+        setTimeout(function () {
+          s.classList.add("hide");
+          setTimeout(function () { s.remove(); }, 450);
+        }, 750);
+      });
+    })();
+  </script>
+
   <!-- Top bar -->
   <header class="topbar">
     <div class="wrap topbar-inner">

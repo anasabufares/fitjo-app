@@ -227,6 +227,7 @@ function renderResults() {
   grid.innerHTML = list.map(cardHTML).join("");
 }
 
+const PIN_ICO = `<svg class="fico pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.1-7-11a7 7 0 0 1 14 0c0 5.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>`;
 function cardHTML(g) {
   const isFav = state.favorites.includes(g.id);
   const inCmp = state.compare.includes(g.id);
@@ -246,7 +247,7 @@ function cardHTML(g) {
     </div>
     <div class="card-body">
       <div class="card-title">${g.name[state.lang]}</div>
-      <div class="card-meta">📍 ${g.area[state.lang]} <span class="rating">★ ${g.rating}</span> <span style="color:var(--muted)">(${g.reviews})</span></div>
+      <div class="card-meta">${PIN_ICO} ${g.area[state.lang]} <span class="rating">★ ${g.rating}</span> <span style="color:var(--muted)">(${g.reviews})</span></div>
       <div class="occ occ-${occ.level}"><span class="dot"></span>${t("busyNow")}: ${occLabel}</div>
       <div class="facil-row">${facils}</div>
       <button class="cmp-toggle ${inCmp ? "on" : ""}" data-cmp="${g.id}">${inCmp ? "✓ " + t("inCompare") : "⇄ " + t("addCompare")}</button>
@@ -307,7 +308,12 @@ function renderDetail(g) {
     </div>
 
     <h1 style="margin-bottom:4px">${g.name[state.lang]}</h1>
-    <div class="card-meta" style="margin-bottom:8px">📍 ${g.address[state.lang]} <span class="rating">★ ${g.rating}</span> <span style="color:var(--muted)">(${g.reviews} ${t("reviews")})</span></div>
+    <div class="card-meta" style="margin-bottom:8px">${PIN_ICO} ${g.address[state.lang]}</div>
+    <div class="dstats">
+      <div class="dstat"><div class="n">★ ${g.rating}</div><div class="l">${g.reviews} ${t("reviews")}</div></div>
+      <div class="dstat"><div class="n" style="color:${occColor}">${occ.pct}%</div><div class="l">${occLabel}</div></div>
+      <div class="dstat"><div class="n">${fmtPrice(monthlyJOD(g))}</div><div class="l">${t("from")}${t("perMonth")}</div></div>
+    </div>
     <div>${g.open247 ? `<span class="offer" style="background:var(--accent);color:#fff;border-color:var(--accent)">🕛 ${t("open247")}</span>` : ""}${offers}</div>
 
     <div class="detail-grid" style="margin-top:18px">
@@ -353,7 +359,7 @@ function renderDetail(g) {
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="plansPanel">
         <h4 style="margin-bottom:12px">💳 ${t("plansTitle")}</h4>
         ${g.plans.map((p, i) => `
           <div class="plan ${i === 1 ? "best" : ""}">
@@ -371,6 +377,11 @@ function renderDetail(g) {
           <a class="btn" href="https://wa.me/${g.whatsapp.replace('+','')}" target="_blank" rel="noopener" style="background:#25D366">🟢 ${t("whatsapp")}</a>
         </div>
       </div>
+    </div>
+
+    <div class="sticky-cta">
+      <div class="sc-price"><small>${t("from")} </small><b>${fmtPrice(monthlyJOD(g))}</b><small>${t("perMonth")}</small></div>
+      <button class="btn" onclick="document.getElementById('plansPanel').scrollIntoView({behavior:'smooth',block:'start'})">${t("subscribe")}</button>
     </div>`;
   el.style.display = "block";
   $("#listWrap").style.display = "none";
