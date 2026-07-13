@@ -1,4 +1,4 @@
-# Tiny static file server for the FitJo prototype.
+# Tiny static file server for the GYMORA prototype.
 # No installation needed — uses built-in Windows .NET HttpListener.
 # Run:  powershell -ExecutionPolicy Bypass -File server.ps1
 # Then open http://localhost:8080 in your browser.
@@ -11,7 +11,7 @@ $prefix = "http://localhost:$port/"
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add($prefix)
 $listener.Start()
-Write-Host "FitJo running at $prefix  (serving $root)"
+Write-Host "GYMORA running at $prefix  (serving $root)"
 Write-Host "Press Ctrl+C to stop."
 
 $mime = @{

@@ -1,5 +1,5 @@
 /* =============================================================
-   FitJo — engagement: gym check-in points + rewards + InBody scan
+   GYMORA — engagement: gym check-in points + rewards + InBody scan
    -------------------------------------------------------------
    DEMO NOW, REAL-AI-READY (same pattern as the calorie tracker).
    - Photo gym check-in: an AI decides "real gym" vs "just a photo"
@@ -8,7 +8,7 @@
    - InBody scan: photo of an InBody sheet -> body metrics logged.
 
    Turn on real AI later by setting (before scripts run):
-     window.FITJO_CONFIG = {
+     window.GYMORA_CONFIG = {
        gymEndpoint: "/.netlify/functions/verify-gym",
        inbodyEndpoint: "/.netlify/functions/scan-inbody"
      };
@@ -73,7 +73,7 @@ const REWARDS = [
   { key: "preworkout", emoji: "⚡", cost: 100, name: { en: "Free pre-workout", ar: "بري وورك آوت مجاني" }, from: { en: "Gym café", ar: "كافيه النادي" } },
   { key: "shake", emoji: "🥤", cost: 300, name: { en: "Free protein shake", ar: "بروتين شيك مجاني" }, from: { en: "Gym café", ar: "كافيه النادي" } },
   { key: "sportswear10", emoji: "👕", cost: 500, name: { en: "20% off sportswear", ar: "خصم 20% على الملابس الرياضية" }, from: { en: "Sports shop", ar: "متجر رياضي" } },
-  { key: "tshirt", emoji: "🎽", cost: 800, name: { en: "Free FitJo T-shirt", ar: "تيشيرت FitJo مجاني" }, from: { en: "Sports shop", ar: "متجر رياضي" } },
+  { key: "tshirt", emoji: "🎽", cost: 800, name: { en: "Free GYMORA T-shirt", ar: "تيشيرت GYMORA مجاني" }, from: { en: "Sports shop", ar: "متجر رياضي" } },
   { key: "shoes", emoji: "👟", cost: 1500, name: { en: "30% off running shoes", ar: "خصم 30% على أحذية الجري" }, from: { en: "Sports shop", ar: "متجر رياضي" } },
   { key: "month", emoji: "🎟️", cost: 2500, name: { en: "3 months free membership", ar: "3 أشهر عضوية مجانية" }, from: { en: "Your gym", ar: "ناديك" } },
 ];
@@ -119,7 +119,7 @@ function demoVerifyGym(file) {
   });
 }
 async function verifyGym(file) {
-  const cfg = window.FITJO_CONFIG || {};
+  const cfg = window.GYMORA_CONFIG || {};
   if (cfg.gymEndpoint) {
     try {
       const image_base64 = await fileToB64(file);
@@ -148,7 +148,7 @@ function demoScanInbody(file, u) {
   });
 }
 async function scanInbody(file, u) {
-  const cfg = window.FITJO_CONFIG || {};
+  const cfg = window.GYMORA_CONFIG || {};
   if (cfg.inbodyEndpoint) {
     try {
       const image_base64 = await fileToB64(file);

@@ -1,5 +1,5 @@
 # =============================================================
-# View FitJo on your PHONE (same Wi-Fi as this computer).
+# View GYMORA on your PHONE (same Wi-Fi as this computer).
 #
 # HOW TO RUN:
 #   Right-click this file  ->  "Run with PowerShell"
@@ -17,7 +17,7 @@ $port = 8080
 
 # Allow the port through Windows Firewall (harmless if it already exists)
 try {
-  New-NetFirewallRule -DisplayName "FitJo preview $port" -Direction Inbound `
+  New-NetFirewallRule -DisplayName "GYMORA preview $port" -Direction Inbound `
     -Action Allow -Protocol TCP -LocalPort $port -ErrorAction Stop | Out-Null
 } catch {}
 
@@ -42,7 +42,7 @@ try {
 
 Write-Host ""
 Write-Host "  =====================================================" -ForegroundColor Green
-Write-Host "   FitJo is running!" -ForegroundColor Green
+Write-Host "   GYMORA is running!" -ForegroundColor Green
 Write-Host "   On your phone (same Wi-Fi) open this in the browser:" -ForegroundColor Green
 Write-Host ""
 Write-Host "        http://$ip`:$port" -ForegroundColor Cyan

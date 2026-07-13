@@ -1,4 +1,4 @@
-# FitJo — Gyms of Jordan (Prototype)
+# GYMORA — Optimize. Recover. Achieve. (Prototype)
 
 A clickable prototype of your gym-finder app for Amman, Jordan. This is **Phase 1**:
 the gym directory with search, filters, favorites, Arabic/English, themes and currencies.
@@ -26,7 +26,7 @@ It uses **sample data** and needs **no installation**.
 1. Run `phone-preview.ps1` on your PC and open the address it shows on your phone's browser.
 2. **iPhone (Safari):** tap **Share** → **Add to Home Screen** → **Add**.
    **Android (Chrome):** tap **⋮** menu → **Add to Home screen / Install app**.
-3. A **FitJo** icon appears on your home screen and opens full-screen like a real app.
+3. A **GYMORA** icon appears on your home screen and opens full-screen like a real app.
 
 This is a *preview* app (an installable web app). A real App Store / Google Play app is a later phase.
 

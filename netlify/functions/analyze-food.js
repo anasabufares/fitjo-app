@@ -1,5 +1,5 @@
 /* =============================================================
-   FitJo — real AI food-photo analyzer (Netlify serverless function)
+   GYMORA — real AI food-photo analyzer (Netlify serverless function)
    -------------------------------------------------------------
    This is the "real AI" brain for the calorie tracker. It is DORMANT
    until you deploy it and point the app at it — the app works fully

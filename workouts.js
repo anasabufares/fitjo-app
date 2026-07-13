@@ -1,5 +1,5 @@
 /* =============================================================
-   FitJo — workout tracker
+   GYMORA — workout tracker
    Build today's session exercise by exercise, log every set
    (weight x reps), finish to save. Suggests what to train today
    from the user's plan/goal. History with total volume.

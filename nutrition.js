@@ -1,5 +1,5 @@
 /* =============================================================
-   FitJo — AI calorie tracker (photo → nutrients + daily food log)
+   GYMORA — AI calorie tracker (photo → nutrients + daily food log)
    -------------------------------------------------------------
    DEMO NOW, REAL-AI-READY.
    By default this works fully offline: it estimates a meal from a
@@ -7,7 +7,7 @@
    demo it with no key and no cost.
 
    To switch on REAL photo AI later, set (before this script runs):
-       window.FITJO_CONFIG = { aiEndpoint: "/.netlify/functions/analyze-food" };
+       window.GYMORA_CONFIG = { aiEndpoint: "/.netlify/functions/analyze-food" };
    analyzeFood() will then POST the photo to that endpoint and use
    the AI's answer, falling back to demo mode if anything fails.
    A ready-to-deploy endpoint stub is in netlify/functions/analyze-food.js
@@ -261,7 +261,7 @@ function normalizeAI(d) {
   };
 }
 async function analyzeFood(file) {
-  const cfg = window.FITJO_CONFIG || {};
+  const cfg = window.GYMORA_CONFIG || {};
   if (cfg.aiEndpoint) {
     try {
       const b64 = await fileToBase64(file);

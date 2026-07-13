@@ -1,5 +1,5 @@
 /* =============================================================
-   FitJo — sample data & configuration
+   GYMORA — sample data & configuration
    This file holds all the content. A non-technical founder can
    edit gym info here (names, prices, hours) without touching logic.
    NOTE: All gyms below are SAMPLE data for the prototype.
@@ -40,7 +40,7 @@ const FACILITIES = {
 const I18N = {
   en: {
     dir: "ltr",
-    brandTag: "Gyms of Jordan",
+    brandTag: "Optimize. Recover. Achieve.",
     heroTitle: "Find your gym in Amman",
     heroSub: "Compare facilities, hours, pool times, trainers and prices — then subscribe in one tap.",
     searchPlaceholder: "Search by gym name or area…",
@@ -93,7 +93,7 @@ const I18N = {
   },
   ar: {
     dir: "rtl",
-    brandTag: "أندية الأردن الرياضية",
+    brandTag: "حسّن. تعافَ. أنجِز.",
     heroTitle: "اعثر على ناديك في عمّان",
     heroSub: "قارن المرافق والأوقات وأوقات المسبح والمدربين والأسعار — ثم اشترك بضغطة واحدة.",
     searchPlaceholder: "ابحث باسم النادي أو المنطقة…",
