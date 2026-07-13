@@ -1,13 +1,13 @@
 {
-  "name": "FitJo — Gyms of Jordan",
-  "short_name": "FitJo",
+  "name": "GYMORA — Optimize. Recover. Achieve.",
+  "short_name": "GYMORA",
   "description": "Find gyms in Amman: hours, pool times, trainers, prices, plus your personal workout & nutrition plan.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#ffffff",
-  "theme_color": "#7c3aed",
+  "background_color": "#0a0a0a",
+  "theme_color": "#22c55e",
   "lang": "en",
   "dir": "auto",
   "icons": [

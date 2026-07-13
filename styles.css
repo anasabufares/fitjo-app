@@ -1,12 +1,12 @@
 /* =============================================================
-   FitJo — styles. Theming via CSS variables + [data-theme].
+   GYMORA — styles. Theming via CSS variables + [data-theme].
    Works offline (no external fonts/CDN required).
    ============================================================= */
 
 :root {
-  /* FitJo brand — signature purple. One color, ours. */
-  --accent: #7c3aed;
-  --accent-2: #d946ef;
+  /* GYMORA brand — signature green. One color, ours. */
+  --accent: #22c55e;
+  --accent-2: #4ade80;
   --bg: #f4f6f8;
   --surface: #ffffff;
   --surface-2: #eef1f4;
@@ -58,9 +58,11 @@ img { max-width: 100%; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; }
 .brand .logo {
   width: 34px; height: 34px; border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  background: #0a0a0a;
   display: grid; place-items: center; color: #fff; font-size: 18px;
+  overflow: hidden;
 }
+.brand .logo img { width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(1.45); }
 .brand small { display: block; font-size: 11px; font-weight: 600; color: var(--muted); }
 .spacer { flex: 1; }
 
@@ -556,16 +558,16 @@ input[type="time"].control { padding: 6px 8px; }
    (appended overrides — tweak or remove this whole block freely)
    ============================================================= */
 :root {
-  /* FitJo purple — the brand color. Not user-changeable. */
-  --accent: #7c3aed;
-  --accent-2: #d946ef;
-  --accent-grad: linear-gradient(120deg, #7c3aed, #d946ef);
+  /* GYMORA green — the brand color. Not user-changeable. */
+  --accent: #22c55e;
+  --accent-2: #4ade80;
+  --accent-grad: linear-gradient(120deg, #16a34a, #4ade80);
   --accent-glow: 0 8px 22px -8px color-mix(in srgb, var(--accent) 60%, transparent);
   --radius: 18px;
   --shadow: 0 10px 30px -12px rgba(15, 23, 42, .18);
 }
 [data-theme="dark"] {
-  --bg: #0d0b14; --surface: #161221; --surface-2: #201a30;
+  --bg: #0a0f0b; --surface: #121a14; --surface-2: #1a2620;
   --shadow: 0 12px 34px -14px rgba(0, 0, 0, .6);
 }
 

@@ -1,5 +1,5 @@
 /* =============================================================
-   FitJo — roles & portals (prototype)
+   GYMORA — roles & portals (prototype)
    Coach portal, gym owner dashboard, gym staff dashboard, admin.
    Sign-in as User / Coach / Staff / Owner / Admin, organized into
    the account panel. Demo data + browser storage (Phase 2 backend
@@ -15,7 +15,7 @@ const PORTAL_I18N = {
   en: {
     roleMember: "Member", roleCoach: "Coach", roleStaff: "Gym staff", roleOwner: "Gym owner", roleAdmin: "Admin",
     signInAs: "Signing in as", accountType: "Account type", yourGym: "Your gym", accessCode: "Access code (staff roles)",
-    adminCodeHint: "Admins need the access code: FITJO-ADMIN",
+    adminCodeHint: "Admins need the access code: GYMORA-ADMIN",
     verifyTitle: "Verify your account", verifySub: "We sent a 6-digit code to your email.",
     verifyDemo: "Demo code (normally emailed):", verifyCodeLabel: "Enter the 6-digit code", verifyBtn: "Verify & enter",
     verifyResend: "Resend code", verifyBad: "That code isn't right — check and try again.", verifiedMsg: "Account verified 🎉",
@@ -41,7 +41,7 @@ const PORTAL_I18N = {
   ar: {
     roleMember: "عضو", roleCoach: "مدرّب", roleStaff: "موظّف نادٍ", roleOwner: "صاحب نادٍ", roleAdmin: "مشرف",
     signInAs: "تسجيل الدخول كـ", accountType: "نوع الحساب", yourGym: "ناديك", accessCode: "رمز الوصول (للموظفين)",
-    adminCodeHint: "يحتاج المشرفون رمز الوصول: FITJO-ADMIN",
+    adminCodeHint: "يحتاج المشرفون رمز الوصول: GYMORA-ADMIN",
     verifyTitle: "فعّل حسابك", verifySub: "أرسلنا رمزاً من 6 أرقام إلى بريدك.",
     verifyDemo: "الرمز التجريبي (يُرسل عادة بالبريد):", verifyCodeLabel: "أدخل الرمز المكوّن من 6 أرقام", verifyBtn: "تفعيل ودخول",
     verifyResend: "إعادة إرسال الرمز", verifyBad: "الرمز غير صحيح — تحقّق وحاول مجدداً.", verifiedMsg: "تم تفعيل الحساب 🎉",
@@ -68,7 +68,7 @@ const PORTAL_I18N = {
 Object.assign(I18N.en, PORTAL_I18N.en);
 Object.assign(I18N.ar, PORTAL_I18N.ar);
 
-const ADMIN_CODE = "FITJO-ADMIN";
+const ADMIN_CODE = "GYMORA-ADMIN";
 const GYM_CAPACITY = 150;
 
 /* ---------- roles ---------- */

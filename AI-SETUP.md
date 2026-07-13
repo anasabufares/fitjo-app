@@ -25,7 +25,7 @@ In your Netlify site: **Site settings → Environment variables → Add a variab
 Open `index.html` and un-comment this line near the bottom (remove the `<!--` and `-->`):
 
 ```html
-<script>window.FITJO_CONFIG = { aiEndpoint: "/.netlify/functions/analyze-food" };</script>
+<script>window.GYMORA_CONFIG = { aiEndpoint: "/.netlify/functions/analyze-food" };</script>
 ```
 
 ## Step 3 — Deploy

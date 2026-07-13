@@ -1,5 +1,5 @@
 /* =============================================================
-   FitJo — supplements shop (16+ only)
+   GYMORA — supplements shop (16+ only)
    Demo store: browse supplements, add to cart, checkout (toast).
    Real payments arrive with the backend phase.
    Relies on globals: state, t, I18N, currentUser, reRenderSection,
@@ -40,7 +40,7 @@ const SUPP_ITEMS = [
   { key: "bar", emoji: "🍫", priceJOD: 2.5, name: { en: "Protein bar", ar: "لوح بروتين" } },
   { key: "multivit", emoji: "💊", priceJOD: 15, name: { en: "Multivitamin", ar: "فيتامينات متعددة" } },
   { key: "omega", emoji: "🐟", priceJOD: 12, name: { en: "Omega-3", ar: "أوميغا 3" } },
-  { key: "shaker", emoji: "🧋", priceJOD: 8, name: { en: "FitJo shaker", ar: "شيكر FitJo" } },
+  { key: "shaker", emoji: "🧋", priceJOD: 8, name: { en: "GYMORA shaker", ar: "شيكر GYMORA" } },
 ];
 
 /* session cart: key -> qty (not persisted in the demo) */

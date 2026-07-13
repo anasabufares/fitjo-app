@@ -1,5 +1,5 @@
 /* =============================================================
-   FitJo — app logic (vanilla JS, runs directly from file://)
+   GYMORA — app logic (vanilla JS, runs directly from file://)
    ============================================================= */
 
 /* home-screen category labels */

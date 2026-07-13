@@ -1,5 +1,5 @@
 /* =============================================================
-   FitJo — Rank (Liftoff-style)
+   GYMORA — Rank (Liftoff-style)
    Log any exercise you actually do (weight x reps). Each lift gets
    an estimated 1RM (Epley), ranked Iron -> Grandmaster against
    bodyweight standards (female-scaled). Overall rank = average of
@@ -21,7 +21,7 @@ const RANK_I18N = {
     percentile: "Stronger than ~{p}% of lifters (est.)",
     liftsCounted: "{n} lifts counted",
     leaderboard: "Leaderboard",
-    lbSub: "Where you stand among FitJo lifters.",
+    lbSub: "Where you stand among GYMORA lifters.",
     publicToggle: "Show me on the leaderboard",
     publicDesc: "Your name, rank and score become visible to everyone. Turn off anytime.",
     youTag: "You", hiddenNote: "You're hidden — turn on the toggle to appear on the board.",
@@ -45,7 +45,7 @@ const RANK_I18N = {
     percentile: "أقوى من ~{p}% من الرياضيين (تقديري)",
     liftsCounted: "{n} رفعات محسوبة",
     leaderboard: "لوحة الصدارة",
-    lbSub: "موقعك بين رياضيي FitJo.",
+    lbSub: "موقعك بين رياضيي GYMORA.",
     publicToggle: "أظهرني على لوحة الصدارة",
     publicDesc: "سيظهر اسمك وتصنيفك ونقاطك للجميع. يمكنك الإيقاف متى شئت.",
     youTag: "أنت", hiddenNote: "أنت مخفي — فعّل الخيار لتظهر على اللوحة.",

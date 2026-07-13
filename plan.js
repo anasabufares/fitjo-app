@@ -1,5 +1,5 @@
 /* =============================================================
-   FitJo — personalized plan (subscription feature)
+   GYMORA — personalized plan (subscription feature)
    Intake form -> workouts, nutrition/meal plan, supplements,
    water, gym schedule, and gym/rest reminders.
    Relies on globals from app.js / auth.js: state, t, I18N,
@@ -314,7 +314,7 @@ function requestNotif() {
 }
 function fireReminder(type) {
   const msg = type === "gym" ? t("remGymMsg") : t("remRestMsg");
-  try { if ("Notification" in window && Notification.permission === "granted") new Notification("FitJo", { body: msg }); } catch (e) {}
+  try { if ("Notification" in window && Notification.permission === "granted") new Notification("GYMORA", { body: msg }); } catch (e) {}
   toast(msg);
 }
 function jordanDayIndex(d) { return (d.getDay() + 1) % 7; }

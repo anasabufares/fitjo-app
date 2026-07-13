@@ -1,5 +1,5 @@
 /* =============================================================
-   FitJo — accounts & profile (prototype, browser-stored)
+   GYMORA — accounts & profile (prototype, browser-stored)
    Sign in / sign up / Google / 2FA authenticator / profile /
    security / email / privacy / notifications / preferences.
    NOTE: demo storage in localStorage — real Google OAuth and
@@ -49,7 +49,7 @@ async function setupBiometric() {
     if (webAuthnAvailable()) {
       const cred = await navigator.credentials.create({ publicKey: {
         challenge: crypto.getRandomValues(new Uint8Array(32)),
-        rp: { name: "FitJo" },
+        rp: { name: "GYMORA" },
         user: { id: new TextEncoder().encode(u.email), name: u.email, displayName: u.name },
         pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
         authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
@@ -204,7 +204,7 @@ function signinHTML() {
   return `
   <button class="auth-x" id="authX">✕</button>
   <div class="auth-title">${t("welcomeBack")}</div>
-  <div class="auth-sub">FitJo · ${t("brandTag")}</div>
+  <div class="auth-sub">GYMORA · ${t("brandTag")}</div>
   <div class="form-err" id="authErr"></div>
   <div class="form-row"><label>${t("signInAs")}</label>
     <select id="inRoleSignin">${["user", "coach", "staff", "owner"].map(r => `<option value="${r}">${roleIcon(r)} ${roleLabel(r)}</option>`).join("")}</select></div>
@@ -222,7 +222,7 @@ function signupHTML() {
   return `
   <button class="auth-x" id="authX">✕</button>
   <div class="auth-title">${t("createYourAccount")}</div>
-  <div class="auth-sub">FitJo · ${t("brandTag")}</div>
+  <div class="auth-sub">GYMORA · ${t("brandTag")}</div>
   <div class="form-err" id="authErr"></div>
   <button class="google-btn" id="googleBtn">${googleG()} ${t("continueGoogle")}</button>
   <div class="divider">${t("orEmail")}</div>
