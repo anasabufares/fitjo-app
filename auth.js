@@ -140,6 +140,7 @@ function updateUser(patch) {
   if (i < 0) return;
   users[i] = { ...users[i], ...patch };
   saveUsers(users);
+  if (window.GymoraCloud) GymoraCloud.pushSoon(users[i]); // background: sync profile to the cloud
 }
 function createUser(data, provider = "email") {
   const users = getUsers();
@@ -562,15 +563,25 @@ function afterAuth() {
   if (u) toast(`${t("hi")}, ${u.name.split(" ")[0]} 👋`);
 }
 
-function handleSignIn() {
+async function handleSignIn() {
   const email = val("inEmail").trim().toLowerCase(), pw = val("inPassword");
   if (!email || !pw) return showErr(t("fillAll"));
-  const u = getUsers().find(x => x.email === email);
+  let u = getUsers().find(x => x.email === email);
+  if ((!u || u.pw !== obf(pw)) && window.GymoraCloud) {
+    // Not on this device (or password changed elsewhere) — try the cloud account.
+    const r = await GymoraCloud.login(email, pw);
+    if (r && r.profile) {
+      const users = getUsers().filter(x => x.email !== email);
+      users.push(r.profile); saveUsers(users);
+      u = r.profile;
+    }
+  }
   if (!u || u.pw !== obf(pw)) return showErr(t("badLogin"));
   if (u.banned) return showErr(t("bannedMsg"));
   const wantRole = val("inRoleSignin") || "user";
   if ((u.role || "user") !== wantRole) return showErr(t("roleMismatch").replace("{role}", roleLabel(u.role || "user")));
   setSession(email);
+  if (window.GymoraCloud && !GymoraCloud.hasSession()) GymoraCloud.login(email, pw); // background: refresh cloud session
   if (!u.verified) return startVerify();
   afterAuth();
 }
@@ -587,7 +598,9 @@ function handleSignUp() {
   if (pw !== cf) return showErr(t("pwMismatch"));
   if (role === "admin" && code !== ADMIN_CODE) return showErr(t("adminCodeHint"));
   if (getUsers().some(x => x.email === email)) return showErr(t("emailTaken"));
-  createUser({ name, email, age, pw, role, gymId }); setSession(email); startVerify();
+  const nu = createUser({ name, email, age, pw, role, gymId }); setSession(email);
+  if (window.GymoraCloud) GymoraCloud.signup(email, pw, nu); // background: create the cloud account
+  startVerify();
 }
 function handleGoogle() {
   const email = "demo.user@gmail.com";
@@ -617,7 +630,7 @@ function doVerify() {
   updateUser({ verified: true }); pendingCode = null; toast(t("verifiedMsg")); afterAuth();
 }
 function resendCode() { pendingCode = genCode(); renderAuthView(); toast(t("verifyResend")); }
-function doLogout() { clearSession(); closeAuth(); renderAll(); toast(t("signOut")); }
+function doLogout() { clearSession(); if (window.GymoraCloud) GymoraCloud.logout(); closeAuth(); renderAll(); toast(t("signOut")); }
 
 function saveProfile() {
   const name = val("pfName").trim(), age = parseInt(val("pfAge"), 10);
