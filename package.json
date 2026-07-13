@@ -1,0 +1,9 @@
+{
+  "name": "gymora",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GYMORA — gym finder and fitness app (static site + Netlify functions)",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0"
+  }
+}
