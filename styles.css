@@ -18,13 +18,14 @@
 }
 
 [data-theme="dark"] {
-  --bg: #0b1220;
-  --surface: #141d2e;
-  --surface-2: #1c2740;
-  --text: #eef2f7;
-  --muted: #93a2b8;
-  --border: #253247;
-  --shadow: 0 6px 24px rgba(0, 0, 0, .35);
+  /* Icon-black — matches the GYMORA logo background */
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-2: #1d1d1d;
+  --text: #f2f4f2;
+  --muted: #9aa39e;
+  --border: #262a27;
+  --shadow: 0 6px 24px rgba(0, 0, 0, .45);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -568,8 +569,8 @@ input[type="time"].control { padding: 6px 8px; }
   --shadow: 0 10px 30px -12px rgba(15, 23, 42, .18);
 }
 [data-theme="dark"] {
-  --bg: #0a0f0b; --surface: #121a14; --surface-2: #1a2620;
-  --shadow: 0 12px 34px -14px rgba(0, 0, 0, .6);
+  --bg: #0a0a0a; --surface: #131413; --surface-2: #1c1e1c;
+  --shadow: 0 12px 34px -14px rgba(0, 0, 0, .7);
 }
 
 /* subtle gym watermark — faint mix: dumbbell, kettlebell, barbell,
