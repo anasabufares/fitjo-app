@@ -254,7 +254,7 @@ function doCheckin(file) {
   const today = todayKey();
   if ((u.checkinDates || []).includes(today)) { toast(t("alreadyMsg")); return; }
   nCheck.status = "checking"; reRenderSection();
-  verifyGym(file).then(r => {
+  return verifyGym(file).then(r => {
     nCheck.status = "idle";
     if (!r.real) { reRenderSection(); toast(t("fakeGymMsg")); return; }
     const award = Math.max(5, Math.round(CHECKIN_POINTS * (r.confidence / 100)));
@@ -298,3 +298,23 @@ function handleEngageChange(e) {
   if (el.dataset.engage === "inbody") { const f = el.files && el.files[0]; if (f) doInbody(f); return true; }
   return false;
 }
+
+/* ---------- quick check-in FAB (one tap from anywhere) ---------- */
+document.addEventListener("DOMContentLoaded", () => {
+  const fab = document.getElementById("quickCheckin");
+  const input = document.getElementById("quickCheckinInput");
+  if (!fab || !input) return;
+  fab.addEventListener("click", () => {
+    if (typeof requireAuth === "function" && !requireAuth()) return;
+    const u = currentUser();
+    if ((u.checkinDates || []).includes(todayKey())) { toast(t("alreadyMsg")); return; }
+    input.click(); // straight to the camera
+  });
+  input.addEventListener("change", () => {
+    const f = input.files && input.files[0];
+    input.value = "";
+    if (!f) return;
+    fab.classList.add("busy");
+    Promise.resolve(doCheckin(f)).finally(() => fab.classList.remove("busy"));
+  });
+});

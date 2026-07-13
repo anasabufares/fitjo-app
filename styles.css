@@ -1039,3 +1039,29 @@ h1, .hero h1, .acct-body h3 { letter-spacing: -.02em; font-weight: 900; }
   .grid .card, #detailView, #featureView .feature-panel, .auth-modal, #splash img, .splash-name, .splash-tag { animation: none !important; }
   * { transition-duration: .01ms !important; }
 }
+
+/* ---- Quick check-in FAB ---- */
+.fab-checkin {
+  position: fixed; z-index: 48;
+  inset-inline-end: 16px; bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  width: 60px; height: 60px; border-radius: 50%;
+  border: none; background: var(--accent-grad); color: #fff;
+  display: grid; place-items: center;
+  box-shadow: 0 12px 28px -6px color-mix(in srgb, var(--accent) 65%, transparent);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.fab-checkin svg { width: 27px; height: 27px; }
+.fab-checkin .fab-plus {
+  position: absolute; top: -2px; inset-inline-end: -2px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #fff; color: #16a34a; font-weight: 900; font-size: 15px;
+  line-height: 22px; text-align: center;
+  border: 2px solid var(--bg);
+}
+.fab-checkin:hover { transform: translateY(-2px); }
+.fab-checkin:active { transform: scale(.92); }
+.fab-checkin.busy svg { animation: fabSpin 1s linear infinite; }
+@keyframes fabSpin { to { transform: rotate(360deg); } }
+@media (max-width: 860px) {
+  .fab-checkin { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+}
