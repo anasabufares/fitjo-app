@@ -9,3 +9,11 @@
 
 [functions]
   directory = "netlify/functions"
+
+# Single-page app: serve index.html for every route so deep links like
+# /admin or /coach load the app instead of a 404. (Function paths such
+# as /api/* take precedence over redirect rules.)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
