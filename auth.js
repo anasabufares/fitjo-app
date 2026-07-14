@@ -755,3 +755,17 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && back.classList.contains("open")) closeAuth(); });
   renderAuthButton();
 });
+
+/* ---------- deep links: /admin, /coach, /owner, /staff ---------- */
+document.addEventListener("DOMContentLoaded", () => {
+  const seg = location.pathname.replace(/\/+$/, "").split("/").pop().toLowerCase();
+  if (!["admin", "coach", "owner", "staff"].includes(seg)) return;
+  const u = currentUser();
+  if (u) {
+    openAuth("account"); // lands on the signed-in user's own portal
+  } else {
+    openAuth("signin");
+    const sel = document.getElementById("inRoleSignin");
+    if (sel) sel.value = seg;
+  }
+});
