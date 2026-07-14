@@ -1065,3 +1065,8 @@ h1, .hero h1, .acct-body h3 { letter-spacing: -.02em; font-weight: 900; }
 @media (max-width: 860px) {
   .fab-checkin { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 }
+
+/* Native form controls (selects, inputs, date pickers) must follow the
+   theme, or phones render them light-on-light / dark-on-dark. */
+:root, body { color-scheme: light; }
+[data-theme="dark"], [data-theme="dark"] body { color-scheme: dark; }
