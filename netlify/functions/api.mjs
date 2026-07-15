@@ -96,6 +96,28 @@ export default async (req) => {
     let body; try { body = await req.json(); } catch { return json(400, { error: "Invalid JSON" }); }
     const email = String(body.email || "").trim().toLowerCase();
     const password = String(body.password || "");
+
+    /* Owner-configured master admin (chosen explicitly by the site owner):
+       when ADMIN_EMAIL + ADMIN_PASSWORD are set in Netlify environment
+       variables, that exact pair signs in as admin, creating the account
+       on first use. Inactive unless both variables are set. */
+    const bootEmail = String(process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+    const bootPw = process.env.ADMIN_PASSWORD || "";
+    if (bootEmail && bootPw && email === bootEmail) {
+      const a = Buffer.from(String(password)), b = Buffer.from(bootPw);
+      if (a.length === b.length && timingSafeEqual(a, b)) {
+        let record = await users.get(email, { type: "json" });
+        if (!record) {
+          const salt = randomBytes(16).toString("hex");
+          record = { email, salt, hash: hashPassword(password, salt), createdAt: Date.now(), profile: null };
+        }
+        record.profile = { ...(record.profile || {}), name: record.profile?.name || "Admin", email, role: "admin", verified: true, banned: false };
+        await users.setJSON(email, record);
+        return json(200, { token: signToken(email), profile: record.profile });
+      }
+      return json(401, { error: "Wrong email or password" });
+    }
+
     const record = await users.get(email, { type: "json" });
     if (!record) return json(401, { error: "Wrong email or password" });
     const a = Buffer.from(hashPassword(password, record.salt));
