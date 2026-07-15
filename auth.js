@@ -210,7 +210,7 @@ function signinHTML() {
   <div class="auth-sub">GYMORA · ${t("brandTag")}</div>
   <div class="form-err" id="authErr"></div>
   <div class="form-row"><label>${t("signInAs")}</label>
-    <select id="inRoleSignin">${["user", "coach", "staff", "owner", "admin"].map(r => `<option value="${r}">${roleIcon(r)} ${roleLabel(r)}</option>`).join("")}</select></div>
+    <select id="inRoleSignin">${["user", "coach", "staff", "owner"].map(r => `<option value="${r}">${roleIcon(r)} ${roleLabel(r)}</option>`).join("")}</select></div>
   <button class="google-btn" id="googleBtn">${googleG()} ${t("continueGoogle")}</button>
   <button class="google-btn faceid-btn" id="faceIdBtn"><span class="faceid-ico">🙂</span> ${t("faceIdBtn")}</button>
   <div class="divider">${t("orEmail")}</div>
@@ -240,12 +240,10 @@ function signupHTML() {
   </div>
   <div class="form-two">
     <div class="form-row"><label>${t("accountType")}</label>
-      <select id="inRole">${["user", "coach", "staff", "owner", "admin"].map(r => `<option value="${r}">${roleIcon(r)} ${roleLabel(r)}</option>`).join("")}</select></div>
+      <select id="inRole">${["user", "coach", "staff", "owner"].map(r => `<option value="${r}">${roleIcon(r)} ${roleLabel(r)}</option>`).join("")}</select></div>
     <div class="form-row"><label>${t("yourGym")}</label>
       <select id="inGym">${GYMS.map(g => `<option value="${g.id}">${g.name[state.lang]}</option>`).join("")}</select></div>
   </div>
-  <div class="form-row" id="adminCodeRow" style="display:none"><label>🛠️ ${t("adminCodeLabel")}</label>
-    <input id="inAdminCode" type="text" autocomplete="off" placeholder="GYMORA-ADMIN"></div>
   <label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:4px 0 12px">
     <input type="checkbox" id="agreeAge"> ${t("agreeAge")}</label>
   <button class="btn block" id="doSignUp">${t("signUp")}</button>
@@ -600,7 +598,6 @@ function handleSignUp() {
   if (!agree) return showErr(t("ageInvalid"));
   if (pw.length < 6) return showErr(t("pwShort"));
   if (pw !== cf) return showErr(t("pwMismatch"));
-  if (role === "admin" && val("inAdminCode").trim() !== ADMIN_CODE) return showErr(t("adminCodeHint"));
   if (getUsers().some(x => x.email === email)) return showErr(t("emailTaken"));
   const nu = createUser({ name, email, age, pw, role, gymId }); setSession(email);
   if (window.GymoraCloud) GymoraCloud.signup(email, pw, nu); // background: create the cloud account
@@ -721,11 +718,6 @@ function onAuthClick(e) {
   const pl = hit("[data-pref-lang]"); if (pl) return setPref("lang", pl.dataset.prefLang);
 }
 function onAuthChange(e) {
-  if (e.target.id === "inRole") {
-    const row = document.getElementById("adminCodeRow");
-    if (row) row.style.display = e.target.value === "admin" ? "" : "none";
-    return;
-  }
   if (typeof handlePlanChange === "function" && handlePlanChange(e)) return;
   if (typeof handleFoodChange === "function" && handleFoodChange(e)) return;
   if (typeof handleEngageChange === "function" && handleEngageChange(e)) return;

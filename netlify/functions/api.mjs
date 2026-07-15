@@ -75,6 +75,11 @@ export default async (req) => {
     if (!validEmail(email)) return json(400, { error: "Invalid email" });
     if (password.length < 6) return json(400, { error: "Password too short" });
     if (await users.get(email)) return json(409, { error: "Account already exists" });
+    // Admin accounts can only be registered with the access code.
+    const ADMIN_CODE = process.env.ADMIN_CODE || "GYMORA-ADMIN";
+    if (body.profile && body.profile.role === "admin" && String(body.adminCode || "") !== ADMIN_CODE) {
+      return json(403, { error: "Admin access code required" });
+    }
     const salt = randomBytes(16).toString("hex");
     const record = {
       email, salt,
