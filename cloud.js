@@ -52,6 +52,12 @@
 
     async pull() { return call("/profile", "GET", null, true); },
 
+    /* gyms managed from the admin console; null → keep built-in defaults */
+    async loadGyms() {
+      const r = await call("/gyms", "GET");
+      return r && Array.isArray(r.gyms) && r.gyms.length ? r.gyms : null;
+    },
+
     /* debounced profile upload — call freely after every local change */
     pushSoon(profile) {
       if (!getToken()) return;

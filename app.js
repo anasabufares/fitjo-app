@@ -626,4 +626,13 @@ document.addEventListener("DOMContentLoaded", () => {
     fv.addEventListener("change", (e) => { if (typeof onAuthChange === "function") onAuthChange(e); });
   }
   renderAll();
+  // Live gym list from the backend (managed in the admin console).
+  if (window.GymoraCloud) {
+    GymoraCloud.loadGyms().then((list) => {
+      if (!list) return;
+      GYMS.length = 0;
+      GYMS.push(...list);
+      renderAll();
+    });
+  }
 });

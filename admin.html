@@ -61,6 +61,32 @@
     .bar { flex: 1; background: linear-gradient(180deg, #4ade80, #16a34a); border-radius: 6px 6px 2px 2px; min-height: 3px; }
     .bar-l { text-align: center; font-size: 10px; color: var(--muted); margin-top: 4px; }
     .note { color: var(--muted); font-size: 13px; padding: 14px; }
+
+    /* ---- gym editor overlay ---- */
+    .h-actions { display: flex; align-items: center; gap: 10px; }
+    .h-actions h2 { margin: 26px 0 12px; }
+    .h-actions .act.primary { background: var(--accent); border-color: var(--accent); color: #fff; margin: 14px 0 0; }
+    #editorBack { position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, .65); display: none; overflow-y: auto; padding: 20px 14px 60px; }
+    #editorBack.open { display: block; }
+    .editor { max-width: 760px; margin: 0 auto; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 22px; }
+    .editor h1 { font-size: 26px; margin-bottom: 14px; }
+    .editor h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin: 20px 0 8px; }
+    .fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .f label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+    .f input, .f select { width: 100%; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: 14px; outline: none; }
+    .f input:focus { border-color: var(--accent); }
+    .fac-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; }
+    .fac { display: flex; align-items: center; gap: 8px; font-size: 13px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; cursor: pointer; }
+    .fac input { accent-color: var(--accent); }
+    .rowlist .rowitem { display: grid; grid-template-columns: 1fr 1fr 1fr 84px 34px; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .rowlist.two .rowitem { grid-template-columns: 1fr 1fr 34px; }
+    .rowitem input { width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: 13px; }
+    .rowitem .rm { width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(244,63,94,.35); background: none; color: #f87171; font-weight: 800; }
+    .addrow { border: 1px dashed var(--border); background: none; color: var(--accent); border-radius: 10px; padding: 7px 14px; font-size: 12.5px; font-weight: 700; }
+    .editor-foot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+    .editor-foot .btn { width: auto; padding: 12px 26px; margin: 0; }
+    .editor-foot .ghost { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); }
+    .eerr { color: #f87171; font-size: 13px; margin-top: 10px; text-align: end; }
   </style>
 </head>
 <body>
@@ -99,10 +125,81 @@
       <h2>Members</h2>
       <div class="tablewrap"><table id="usersTable"></table></div>
 
-      <h2>Gyms</h2>
+      <div class="h-actions">
+        <h2>Gyms</h2>
+        <button class="act primary" id="addGym">＋ Add gym</button>
+        <button class="act" id="seedGyms" style="display:none;margin:14px 0 0">Import the 8 sample gyms</button>
+      </div>
+      <div class="note" id="gymNote" style="display:none;padding:0 0 10px"></div>
       <div class="tablewrap"><table id="gymsTable"></table></div>
     </div>
   </section>
+
+  <!-- ============ GYM EDITOR ============ -->
+  <div id="editorBack">
+    <div class="editor">
+      <h1 id="edTitle">Edit gym</h1>
+
+      <h3>Basics</h3>
+      <div class="fgrid">
+        <div class="f"><label>Name (English)</label><input data-f="name.en"></div>
+        <div class="f"><label>Name (Arabic)</label><input data-f="name.ar" dir="rtl"></div>
+        <div class="f"><label>Area (English)</label><input data-f="area.en"></div>
+        <div class="f"><label>Area (Arabic)</label><input data-f="area.ar" dir="rtl"></div>
+        <div class="f"><label>Address (English)</label><input data-f="address.en"></div>
+        <div class="f"><label>Address (Arabic)</label><input data-f="address.ar" dir="rtl"></div>
+        <div class="f"><label>Phone</label><input data-f="phone" placeholder="+9626…"></div>
+        <div class="f"><label>WhatsApp</label><input data-f="whatsapp" placeholder="+9627…"></div>
+        <div class="f"><label>Rating (0–5)</label><input data-f="rating" type="number" step="0.1" min="0" max="5"></div>
+        <div class="f"><label>Reviews count</label><input data-f="reviews" type="number" min="0"></div>
+        <div class="f"><label>Access</label>
+          <select data-f="gender"><option value="mixed">Mixed</option><option value="women">Women only</option><option value="men">Men only</option></select></div>
+        <div class="f"><label>Minimum age</label><input data-f="minAge" type="number" min="10" max="30"></div>
+        <div class="f"><label>Card color</label>
+          <select data-f="gradient"><option value="g-a">Green</option><option value="g-b">Deep green</option><option value="g-c">Teal</option><option value="g-d">Lime</option><option value="g-e">Emerald</option><option value="g-f">Graphite</option></select></div>
+        <div class="f"><label>Open 24/7</label>
+          <select data-f="open247"><option value="">No</option><option value="1">Yes</option></select></div>
+      </div>
+
+      <h3>Location (for GPS check-in)</h3>
+      <div class="fgrid">
+        <div class="f"><label>Latitude</label><input data-f="loc.lat" type="number" step="0.0001" placeholder="31.95"></div>
+        <div class="f"><label>Longitude</label><input data-f="loc.lng" type="number" step="0.0001" placeholder="35.88"></div>
+      </div>
+
+      <h3>Hours</h3>
+      <div class="fgrid">
+        <div class="f"><label>Sat–Thu</label><input data-f="hours.weekdays" placeholder="6:00 AM – 11:00 PM"></div>
+        <div class="f"><label>Friday</label><input data-f="hours.friday" placeholder="10:00 AM – 10:00 PM"></div>
+      </div>
+
+      <h3>Pool</h3>
+      <div class="fgrid">
+        <div class="f"><label>Has a pool</label>
+          <select data-f="pool"><option value="">No</option><option value="1">Yes</option></select></div>
+        <div class="f"><label>Women's hours</label><input data-f="poolHours.women" placeholder="9:00 AM – 1:00 PM"></div>
+        <div class="f"><label>Men's hours</label><input data-f="poolHours.men" placeholder="2:00 PM – 10:00 PM"></div>
+      </div>
+
+      <h3>Facilities</h3>
+      <div class="fac-grid" id="facGrid"></div>
+
+      <h3>Trainers <button class="addrow" id="addTrainer" type="button">＋ add</button></h3>
+      <div class="rowlist" id="trainerRows" data-cols="name,specEn,specAr,price"></div>
+
+      <h3>Membership plans <button class="addrow" id="addPlan" type="button">＋ add</button></h3>
+      <div class="rowlist" id="planRows" data-cols="nameEn,nameAr,months,price"></div>
+
+      <h3>Offers <button class="addrow" id="addOffer" type="button">＋ add</button></h3>
+      <div class="rowlist two" id="offerRows"></div>
+
+      <div class="eerr" id="edErr"></div>
+      <div class="editor-foot">
+        <button class="btn ghost" id="edCancel" type="button">Cancel</button>
+        <button class="btn" id="edSave" type="button">Save gym</button>
+      </div>
+    </div>
+  </div>
 
   <script src="data.js"></script>
   <script>
@@ -231,22 +328,148 @@
           </td>
         </tr>`).join("") : `<tr><td colspan="8" class="note">No accounts yet.</td></tr>`);
 
-      $("#gymsTable").innerHTML = `
-        <tr><th>Gym</th><th>Area</th><th>Rating</th><th>Reviews</th><th>From /mo</th><th>Access</th></tr>` +
-        GYMS.map(g => `
-        <tr>
-          <td><b>${esc(g.name.en)}</b></td><td>${esc(g.area.en)}</td>
-          <td>★ ${g.rating}</td><td>${g.reviews}</td>
-          <td>${Math.min(...g.plans.map(p => Math.round(p.priceJOD / p.months)))} JD</td>
-          <td>${esc(g.gender)}</td>
-        </tr>`).join("");
+      await renderGyms();
     }
+
+    /* ---------- gyms: cloud list + editor ---------- */
+    let gymList = [];
+    let cloudGyms = false;
+    async function fetchGyms() {
+      try {
+        const r = await fetch(API + "/gyms");
+        if (r.ok) { const d = await r.json(); cloudGyms = true; return d.gyms || []; }
+      } catch (e) {}
+      cloudGyms = false;
+      return GYMS; // read-only defaults when the backend is unreachable
+    }
+    async function renderGyms() {
+      gymList = await fetchGyms();
+      const canEdit = cloudGyms && mode === "cloud";
+      $("#addGym").style.display = canEdit ? "" : "none";
+      $("#seedGyms").style.display = canEdit && gymList.length === 0 ? "" : "none";
+      const note = $("#gymNote");
+      if (!canEdit) { note.style.display = ""; note.textContent = "Gym editing needs the backend — showing the built-in list read-only."; }
+      else if (gymList.length === 0) { note.style.display = ""; note.textContent = "No gyms in the cloud yet. Import the samples to start from them, or add your first gym."; }
+      else note.style.display = "none";
+      $("#gymsTable").innerHTML = `
+        <tr><th>Gym</th><th>Area</th><th>Rating</th><th>From /mo</th><th>Access</th><th>Pool</th>${canEdit ? "<th></th>" : ""}</tr>` +
+        (gymList.length ? gymList.map(g => `
+        <tr>
+          <td><b>${esc(g.name.en)}</b></td><td>${esc((g.area || {}).en || "")}</td>
+          <td>★ ${g.rating ?? "—"}</td>
+          <td>${(g.plans || []).length ? Math.min(...g.plans.map(p => Math.round(p.priceJOD / (p.months || 1)))) + " JD" : "—"}</td>
+          <td>${esc(g.gender || "mixed")}</td><td>${g.pool ? "Yes" : "No"}</td>
+          ${canEdit ? `<td>
+            <button class="act" data-editgym="${esc(g.id)}">Edit</button>
+            <button class="act danger" data-delgym="${esc(g.id)}">Delete</button>
+          </td>` : ""}
+        </tr>`).join("") : `<tr><td colspan="7" class="note">No gyms.</td></tr>`);
+    }
+
+    /* ----- editor helpers ----- */
+    const getPath = (o, p) => p.split(".").reduce((a, k) => (a == null ? a : a[k]), o);
+    const setPath = (o, p, v) => { const ks = p.split("."); let c = o; ks.slice(0, -1).forEach(k => { c[k] = c[k] || {}; c = c[k]; }); c[ks[ks.length - 1]] = v; };
+    const NUMS = ["rating", "reviews", "minAge", "loc.lat", "loc.lng"];
+
+    function rowHTML(kind, vals = {}) {
+      if (kind === "offer") return `<div class="rowitem"><input data-r="en" placeholder="Offer (English)" value="${esc(vals.en || "")}"><input data-r="ar" dir="rtl" placeholder="العرض (عربي)" value="${esc(vals.ar || "")}"><button class="rm" type="button">✕</button></div>`;
+      if (kind === "trainer") return `<div class="rowitem"><input data-r="name" placeholder="Trainer name" value="${esc(vals.name || "")}"><input data-r="specEn" placeholder="Specialty (EN)" value="${esc((vals.specialty || {}).en || "")}"><input data-r="specAr" dir="rtl" placeholder="التخصص (عربي)" value="${esc((vals.specialty || {}).ar || "")}"><input data-r="price" type="number" placeholder="JD" value="${vals.price ?? ""}"><button class="rm" type="button">✕</button></div>`;
+      return `<div class="rowitem"><input data-r="nameEn" placeholder="Plan (EN), e.g. Monthly" value="${esc((vals.name || {}).en || "")}"><input data-r="nameAr" dir="rtl" placeholder="الباقة (عربي)" value="${esc((vals.name || {}).ar || "")}"><input data-r="months" type="number" placeholder="Months" value="${vals.months ?? ""}"><input data-r="price" type="number" placeholder="Total JD" value="${vals.priceJOD ?? ""}"><button class="rm" type="button">✕</button></div>`;
+    }
+
+    let editingId = null;
+    function openEditor(g) {
+      editingId = g ? g.id : null;
+      $("#edTitle").textContent = g ? "Edit gym — " + (g.name || {}).en : "Add a gym";
+      $("#edErr").textContent = "";
+      document.querySelectorAll("#editorBack [data-f]").forEach(el => {
+        const v = g ? getPath(g, el.dataset.f) : null;
+        if (el.dataset.f === "pool" || el.dataset.f === "open247") el.value = v ? "1" : "";
+        else el.value = v ?? "";
+      });
+      $("#facGrid").innerHTML = Object.keys(FACILITIES).map(k =>
+        `<label class="fac"><input type="checkbox" data-fac="${k}" ${g && (g.facilities || []).includes(k) ? "checked" : ""}> ${FACILITIES[k].en}</label>`).join("");
+      $("#trainerRows").innerHTML = ((g && g.trainers) || []).map(tr => rowHTML("trainer", tr)).join("");
+      $("#planRows").innerHTML = ((g && g.plans) || []).map(p => rowHTML("plan", p)).join("");
+      $("#offerRows").innerHTML = ((g && g.offers) || []).map(o => rowHTML("offer", o)).join("");
+      $("#editorBack").classList.add("open");
+    }
+    function collectRows(sel, build) {
+      return [...document.querySelectorAll(sel + " .rowitem")].map(row => {
+        const v = {}; row.querySelectorAll("[data-r]").forEach(i => v[i.dataset.r] = i.value.trim());
+        return build(v);
+      }).filter(Boolean);
+    }
+    function collectGym() {
+      const g = editingId ? JSON.parse(JSON.stringify(gymList.find(x => x.id === editingId) || {})) : {};
+      document.querySelectorAll("#editorBack [data-f]").forEach(el => {
+        const f = el.dataset.f;
+        let v = el.value.trim();
+        if (f === "pool" || f === "open247") v = el.value === "1";
+        else if (NUMS.includes(f)) v = v === "" ? null : Number(v);
+        setPath(g, f, v);
+      });
+      if (g.loc && (g.loc.lat == null || g.loc.lng == null)) delete g.loc;
+      g.facilities = [...document.querySelectorAll("#facGrid [data-fac]:checked")].map(i => i.dataset.fac);
+      g.trainers = collectRows("#trainerRows", v => v.name ? { name: v.name, specialty: { en: v.specEn, ar: v.specAr || v.specEn }, price: Number(v.price) || 0 } : null);
+      g.plans = collectRows("#planRows", v => v.nameEn ? { name: { en: v.nameEn, ar: v.nameAr || v.nameEn }, months: Number(v.months) || 1, priceJOD: Number(v.price) || 0 } : null);
+      g.offers = collectRows("#offerRows", v => v.en ? { en: v.en, ar: v.ar || v.en } : null);
+      if (!g.name || !g.name.en) return null;
+      if (!g.name.ar) g.name.ar = g.name.en;
+      ["area", "address"].forEach(k => { g[k] = g[k] || {}; g[k].en = g[k].en || ""; g[k].ar = g[k].ar || g[k].en; });
+      g.rating = g.rating ?? 4.5; g.reviews = g.reviews ?? 0; g.minAge = g.minAge ?? 16;
+      g.gender = g.gender || "mixed"; g.gradient = g.gradient || "g-a";
+      g.hours = g.hours || {}; g.poolHours = g.poolHours || {};
+      return g;
+    }
+    async function saveGym() {
+      const g = collectGym();
+      if (!g) return $("#edErr").textContent = "The gym needs at least an English name.";
+      const r = await fetch(API + "/admin/gyms", {
+        method: editingId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ gym: g }),
+      }).catch(() => null);
+      if (!r || !r.ok) return $("#edErr").textContent = r ? ((await r.json()).error || "Save failed") : "Backend unreachable";
+      $("#editorBack").classList.remove("open");
+      renderGyms();
+    }
+    async function deleteGym(id) {
+      const g = gymList.find(x => x.id === id);
+      if (!confirm(`Delete ${g ? g.name.en : id}? Members will no longer see it.`)) return;
+      const r = await fetch(API + "/admin/gyms", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ id }),
+      }).catch(() => null);
+      if (!r || !r.ok) return alert("Delete failed");
+      renderGyms();
+    }
+    $("#addGym").addEventListener("click", () => openEditor(null));
+    $("#seedGyms").addEventListener("click", async () => {
+      const r = await fetch(API + "/admin/gyms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ seed: GYMS }),
+      }).catch(() => null);
+      if (r && r.ok) renderGyms(); else alert("Import failed");
+    });
+    $("#edCancel").addEventListener("click", () => $("#editorBack").classList.remove("open"));
+    $("#edSave").addEventListener("click", saveGym);
+    $("#addTrainer").addEventListener("click", () => $("#trainerRows").insertAdjacentHTML("beforeend", rowHTML("trainer")));
+    $("#addPlan").addEventListener("click", () => $("#planRows").insertAdjacentHTML("beforeend", rowHTML("plan")));
+    $("#addOffer").addEventListener("click", () => $("#offerRows").insertAdjacentHTML("beforeend", rowHTML("offer")));
+    $("#editorBack").addEventListener("click", (e) => { if (e.target.classList.contains("rm")) e.target.closest(".rowitem").remove(); });
 
     document.addEventListener("click", (e) => {
       const ban = e.target.closest("[data-ban]");
       if (ban) return void setBanned(ban.dataset.ban, ban.dataset.to === "1");
       const del = e.target.closest("[data-del]");
       if (del) return void removeUser(del.dataset.del);
+      const eg = e.target.closest("[data-editgym]");
+      if (eg) return openEditor(gymList.find(x => x.id === eg.dataset.editgym));
+      const dg = e.target.closest("[data-delgym]");
+      if (dg) return void deleteGym(dg.dataset.delgym);
     });
   })();
   </script>

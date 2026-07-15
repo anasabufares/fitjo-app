@@ -64,8 +64,64 @@ export default async (req) => {
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/api/, "") || "/";
   const users = getStore("gymora-users");
+  const gymsStore = getStore("gymora-gyms");
+
+  /* Resolve the requesting admin's email, or null. */
+  async function adminEmail() {
+    const auth = req.headers.get("authorization") || "";
+    const email = auth.startsWith("Bearer ") ? verifyToken(auth.slice(7)) : null;
+    if (!email) return null;
+    const me = await users.get(email, { type: "json" });
+    return me && me.profile && me.profile.role === "admin" ? email : null;
+  }
 
   if (req.method === "GET" && path === "/health") return json(200, { ok: true, service: "gymora-api" });
+
+  /* ---- gyms: public read (the app loads its gym list from here) ---- */
+  if (req.method === "GET" && path === "/gyms") {
+    const list = (await gymsStore.get("list", { type: "json" })) || [];
+    return json(200, { gyms: list });
+  }
+
+  /* ---- gyms: admin add / edit / delete / seed ---- */
+  if (path === "/admin/gyms") {
+    if (!(await adminEmail())) return json(403, { error: "Admin only" });
+    let body; try { body = await req.json(); } catch { return json(400, { error: "Invalid JSON" }); }
+    let list = (await gymsStore.get("list", { type: "json" })) || [];
+
+    if (req.method === "POST" && Array.isArray(body.seed)) {
+      // one-time import of the built-in sample gyms; only while the list is empty
+      if (list.length) return json(409, { error: "Gyms already exist" });
+      await gymsStore.setJSON("list", body.seed);
+      return json(200, { ok: true, count: body.seed.length });
+    }
+
+    const g = body.gym;
+    if (req.method === "POST" || req.method === "PUT") {
+      if (!g || !g.name || !String(g.name.en || "").trim()) return json(400, { error: "Gym needs at least an English name" });
+    }
+
+    if (req.method === "POST") {
+      g.id = "g" + Date.now();
+      list.push(g);
+      await gymsStore.setJSON("list", list);
+      return json(200, { gym: g });
+    }
+    if (req.method === "PUT") {
+      const i = list.findIndex(x => x.id === g.id);
+      if (i < 0) return json(404, { error: "Gym not found" });
+      list[i] = g;
+      await gymsStore.setJSON("list", list);
+      return json(200, { gym: g });
+    }
+    if (req.method === "DELETE") {
+      const before = list.length;
+      list = list.filter(x => x.id !== body.id);
+      if (list.length === before) return json(404, { error: "Gym not found" });
+      await gymsStore.setJSON("list", list);
+      return json(200, { ok: true });
+    }
+  }
 
   /* ---- signup ---- */
   if (req.method === "POST" && path === "/signup") {
