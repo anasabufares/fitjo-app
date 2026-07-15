@@ -23,7 +23,10 @@ Object.assign(I18N.en, { changePhoto: "Change photo", removePhoto: "Remove", lb:
   faceIdNone: "No Face ID on this account yet — sign in with your password once, then turn it on in Security.",
   faceIdNeedEmail: "Type your email first so we know whose face to check.",
   faceIdFail: "Face ID didn't work — use your password instead.",
-  memberOnlyView: "Sign in to view gym details and compare gyms." });
+  memberOnlyView: "Sign in to view gym details and compare gyms.",
+  accessKey: "Access key", accessKeyHint: "Coach and gym-owner accounts need an access key from the FitJo team.",
+  accessKeyMissing: "Enter the access key you received from FitJo.",
+  accessKeyBad: "That access key isn't valid for this account type. Check it or contact FitJo." });
 Object.assign(I18N.ar, { changePhoto: "تغيير الصورة", removePhoto: "إزالة", lb: "رطل",
   roleMismatch: "هذا الحساب مسجّل كـ {role}. اختر هذا النوع لتسجيل الدخول.",
   faceIdBtn: "الدخول ببصمة الوجه", faceId: "بصمة الوجه / الدخول الحيوي",
@@ -33,7 +36,10 @@ Object.assign(I18N.ar, { changePhoto: "تغيير الصورة", removePhoto: "�
   faceIdNone: "لا توجد بصمة وجه لهذا الحساب — سجّل بكلمة المرور مرة ثم فعّلها من الأمان.",
   faceIdNeedEmail: "اكتب بريدك أولاً لنعرف وجه من نتحقق.",
   faceIdFail: "لم تنجح بصمة الوجه — استخدم كلمة المرور.",
-  memberOnlyView: "سجّل الدخول لعرض تفاصيل الأندية والمقارنة." });
+  memberOnlyView: "سجّل الدخول لعرض تفاصيل الأندية والمقارنة.",
+  accessKey: "مفتاح الوصول", accessKeyHint: "حسابات المدرب وصاحب النادي تتطلب مفتاح وصول من فريق FitJo.",
+  accessKeyMissing: "أدخل مفتاح الوصول الذي استلمته من FitJo.",
+  accessKeyBad: "مفتاح الوصول غير صالح لهذا النوع من الحسابات. تحقق منه أو تواصل مع FitJo." });
 
 /* ---------- biometric (Face ID / fingerprint) ----------
    Uses the real device prompt (WebAuthn platform authenticator) when the
@@ -117,7 +123,11 @@ const saveUsers = (u) => localStorage.setItem("fj_users", JSON.stringify(u));
 const getSession = () => localStorage.getItem("fj_session") || null;
 const setSession = (email) => localStorage.setItem("fj_session", email);
 const clearSession = () => localStorage.removeItem("fj_session");
-const currentUser = () => { const s = getSession(); return s ? getUsers().find(u => u.email === s) || null : null; };
+const currentUser = () => {
+  const s = getSession();
+  const user = s ? getUsers().find(u => u.email === s) || null : null;
+  return user && user.role !== "admin" ? user : null;
+};
 
 /* ---------- helpers ---------- */
 const obf = (pw) => btoa(unescape(encodeURIComponent(pw)));
@@ -241,6 +251,11 @@ function signupHTML() {
     <div class="form-row"><label>${t("yourGym")}</label>
       <select id="inGym">${GYMS.map(g => `<option value="${g.id}">${g.name[state.lang]}</option>`).join("")}</select></div>
   </div>
+  <div class="form-row" id="accessKeyRow" style="display:none">
+    <label>${t("accessKey")}</label>
+    <input id="inAccessKey" type="text" autocomplete="off" spellcheck="false" placeholder="FJ-COACH-XXXXX-XXXXX" style="text-transform:uppercase">
+    <div style="font-size:12px;color:var(--muted);margin-top:4px">${t("accessKeyHint")}</div>
+  </div>
   <label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:4px 0 12px">
     <input type="checkbox" id="agreeAge"> ${t("agreeAge")}</label>
   <button class="btn block" id="doSignUp">${t("signUp")}</button>
@@ -291,7 +306,6 @@ function sectionHTML(sec) {
   if (sec === "coach" && typeof secCoach === "function") return secCoach(u);
   if (sec === "owner" && typeof secOwner === "function") return secOwner(u);
   if (sec === "staff" && typeof secStaff === "function") return secStaff(u);
-  if (sec === "admin" && typeof secAdmin === "function") return secAdmin(u);
   if (sec === "profile") return secProfile(u);
   if (sec === "plan" && typeof secPlan === "function") return secPlan(u);
   if (sec === "nutrition" && typeof secNutrition === "function") return secNutrition(u);
@@ -566,7 +580,7 @@ function handleSignIn() {
   const email = val("inEmail").trim().toLowerCase(), pw = val("inPassword");
   if (!email || !pw) return showErr(t("fillAll"));
   const u = getUsers().find(x => x.email === email);
-  if (!u || u.pw !== obf(pw)) return showErr(t("badLogin"));
+  if (!u || u.role === "admin" || u.pw !== obf(pw)) return showErr(t("badLogin"));
   if (u.banned) return showErr(t("bannedMsg"));
   const wantRole = val("inRoleSignin") || "user";
   if ((u.role || "user") !== wantRole) return showErr(t("roleMismatch").replace("{role}", roleLabel(u.role || "user")));
@@ -585,8 +599,17 @@ function handleSignUp() {
   if (!agree) return showErr(t("ageInvalid"));
   if (pw.length < 6) return showErr(t("pwShort"));
   if (pw !== cf) return showErr(t("pwMismatch"));
-  if (role === "admin" && code !== ADMIN_CODE) return showErr(t("adminCodeHint"));
   if (getUsers().some(x => x.email === email)) return showErr(t("emailTaken"));
+  if (role === "coach" || role === "owner") {
+    const keyIn = (val("inAccessKey") || "").trim().toUpperCase();
+    if (!keyIn) return showErr(t("accessKeyMissing"));
+    let keys = [];
+    try { const parsed = JSON.parse(localStorage.getItem("fj_access_keys") || "[]"); if (Array.isArray(parsed)) keys = parsed; } catch {}
+    const match = keys.find(k => k && k.key === keyIn && k.role === role && !k.usedBy && !k.revoked);
+    if (!match) return showErr(t("accessKeyBad"));
+    match.usedBy = email; match.usedAt = Date.now();
+    localStorage.setItem("fj_access_keys", JSON.stringify(keys));
+  }
   createUser({ name, email, age, pw, role, gymId }); setSession(email); startVerify();
 }
 function handleGoogle() {
@@ -704,6 +727,11 @@ function onAuthClick(e) {
   const pl = hit("[data-pref-lang]"); if (pl) return setPref("lang", pl.dataset.prefLang);
 }
 function onAuthChange(e) {
+  if (e.target.id === "inRole") {
+    const row = document.getElementById("accessKeyRow");
+    if (row) row.style.display = (e.target.value === "coach" || e.target.value === "owner") ? "" : "none";
+    return;
+  }
   if (typeof handlePlanChange === "function" && handlePlanChange(e)) return;
   if (typeof handleFoodChange === "function" && handleFoodChange(e)) return;
   if (typeof handleEngageChange === "function" && handleEngageChange(e)) return;

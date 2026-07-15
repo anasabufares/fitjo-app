@@ -1,7 +1,7 @@
 /* =============================================================
    FitJo — roles & portals (prototype)
-   Coach portal, gym owner dashboard, gym staff dashboard, admin.
-   Sign-in as User / Coach / Staff / Owner / Admin, organized into
+   Coach portal, gym owner dashboard, and gym staff dashboard.
+   Sign-in as User / Coach / Staff / Owner, organized into
    the account panel. Demo data + browser storage (Phase 2 backend
    replaces the sample subscribers, live occupancy and messaging).
    Relies on globals from app.js / auth.js:
@@ -13,14 +13,13 @@
 /* ---------- text ---------- */
 const PORTAL_I18N = {
   en: {
-    roleMember: "Member", roleCoach: "Coach", roleStaff: "Gym staff", roleOwner: "Gym owner", roleAdmin: "Admin",
+    roleMember: "Member", roleCoach: "Coach", roleStaff: "Gym staff", roleOwner: "Gym owner",
     signInAs: "Signing in as", accountType: "Account type", yourGym: "Your gym", accessCode: "Access code (staff roles)",
-    adminCodeHint: "Admins need the access code: FITJO-ADMIN",
     verifyTitle: "Verify your account", verifySub: "We sent a 6-digit code to your email.",
     verifyDemo: "Demo code (normally emailed):", verifyCodeLabel: "Enter the 6-digit code", verifyBtn: "Verify & enter",
     verifyResend: "Resend code", verifyBad: "That code isn't right — check and try again.", verifiedMsg: "Account verified 🎉",
     bannedMsg: "This account has been suspended. Contact support.",
-    coachPortal: "Coach portal", ownerDash: "Owner dashboard", staffDash: "Staff dashboard", adminPortal: "Admin portal",
+    coachPortal: "Coach portal", ownerDash: "Owner dashboard", staffDash: "Staff dashboard",
     subscribers: "Subscribers", subsSub: "The members you coach. Message or contact them anytime.",
     message: "Message", sendMsg: "Send message", msgPlaceholder: "Write a message…", msgSent: "Message sent",
     lastSeen: "Last check-in", today: "Today", yesterday: "Yesterday", daysAgo: "days ago",
@@ -32,21 +31,15 @@ const PORTAL_I18N = {
     validateKey: "Validate membership key", keyPlaceholder: "e.g. FJ-4821-KD", validate: "Validate",
     keyValid: "✅ Valid — active membership", keyInvalid: "❌ Not found or expired", checkinsToday: "Check-ins today",
     checkinMember: "Check a member in", memberEmail: "Member email", checkin: "Check in", checkedIn: "Checked in ✓",
-    adminSub: "Manage the whole platform.",
-    broadcast: "Broadcast to all users", broadcastSend: "Send to everyone", broadcastSent: "Broadcast sent to",
-    banUser: "Suspend a user", giveaway: "Run a giveaway", giveawayRun: "Pick a winner", winner: "🎉 Winner:",
-    freeStuff: "Grant free stuff", grantFree: "Grant 1-month free (demo)", granted: "Granted (demo)",
-    totalUsers: "Total users", byRole: "By role", noUsers: "No matching users.",
   },
   ar: {
-    roleMember: "عضو", roleCoach: "مدرّب", roleStaff: "موظّف نادٍ", roleOwner: "صاحب نادٍ", roleAdmin: "مشرف",
+    roleMember: "عضو", roleCoach: "مدرّب", roleStaff: "موظّف نادٍ", roleOwner: "صاحب نادٍ",
     signInAs: "تسجيل الدخول كـ", accountType: "نوع الحساب", yourGym: "ناديك", accessCode: "رمز الوصول (للموظفين)",
-    adminCodeHint: "يحتاج المشرفون رمز الوصول: FITJO-ADMIN",
     verifyTitle: "فعّل حسابك", verifySub: "أرسلنا رمزاً من 6 أرقام إلى بريدك.",
     verifyDemo: "الرمز التجريبي (يُرسل عادة بالبريد):", verifyCodeLabel: "أدخل الرمز المكوّن من 6 أرقام", verifyBtn: "تفعيل ودخول",
     verifyResend: "إعادة إرسال الرمز", verifyBad: "الرمز غير صحيح — تحقّق وحاول مجدداً.", verifiedMsg: "تم تفعيل الحساب 🎉",
     bannedMsg: "تم إيقاف هذا الحساب. تواصل مع الدعم.",
-    coachPortal: "بوابة المدرّب", ownerDash: "لوحة صاحب النادي", staffDash: "لوحة الموظّف", adminPortal: "لوحة المشرف",
+    coachPortal: "بوابة المدرّب", ownerDash: "لوحة صاحب النادي", staffDash: "لوحة الموظّف",
     subscribers: "المشتركون", subsSub: "الأعضاء الذين تدرّبهم. راسلهم أو تواصل معهم في أي وقت.",
     message: "رسالة", sendMsg: "إرسال رسالة", msgPlaceholder: "اكتب رسالة…", msgSent: "أُرسلت الرسالة",
     lastSeen: "آخر حضور", today: "اليوم", yesterday: "أمس", daysAgo: "أيام مضت",
@@ -58,27 +51,21 @@ const PORTAL_I18N = {
     validateKey: "تحقّق من مفتاح العضوية", keyPlaceholder: "مثال FJ-4821-KD", validate: "تحقّق",
     keyValid: "✅ صالح — عضوية فعّالة", keyInvalid: "❌ غير موجود أو منتهٍ", checkinsToday: "حضور اليوم",
     checkinMember: "تسجيل حضور عضو", memberEmail: "بريد العضو", checkin: "تسجيل حضور", checkedIn: "تم التسجيل ✓",
-    adminSub: "إدارة المنصّة بالكامل.",
-    broadcast: "بثّ لكل المستخدمين", broadcastSend: "إرسال للجميع", broadcastSent: "أُرسل البثّ إلى",
-    banUser: "إيقاف مستخدم", giveaway: "سحب جائزة", giveawayRun: "اختر فائزاً", winner: "🎉 الفائز:",
-    freeStuff: "منح هدايا مجانية", grantFree: "منح شهر مجاني (تجريبي)", granted: "تم المنح (تجريبي)",
-    totalUsers: "إجمالي المستخدمين", byRole: "حسب الدور", noUsers: "لا مستخدمين مطابقين.",
   },
 };
 Object.assign(I18N.en, PORTAL_I18N.en);
 Object.assign(I18N.ar, PORTAL_I18N.ar);
 
-const ADMIN_CODE = "FITJO-ADMIN";
 const GYM_CAPACITY = 150;
 
 /* ---------- roles ---------- */
-const ROLES = ["user", "coach", "staff", "owner", "admin"];
-function roleLabel(r) { return { user: t("roleMember"), coach: t("roleCoach"), staff: t("roleStaff"), owner: t("roleOwner"), admin: t("roleAdmin") }[r] || t("roleMember"); }
-function roleIcon(r) { return { user: "👤", coach: "🧑‍🏫", staff: "🪪", owner: "🏢", admin: "🛠️" }[r] || "👤"; }
-function isStaffRole(r) { return r === "coach" || r === "staff" || r === "owner" || r === "admin"; }
+const ROLES = ["user", "coach", "staff", "owner"];
+function roleLabel(r) { return { user: t("roleMember"), coach: t("roleCoach"), staff: t("roleStaff"), owner: t("roleOwner") }[r] || t("roleMember"); }
+function roleIcon(r) { return { user: "👤", coach: "🧑‍🏫", staff: "🪪", owner: "🏢" }[r] || "👤"; }
+function isStaffRole(r) { return r === "coach" || r === "staff" || r === "owner"; }
 function defaultSectionForRole(u) {
   if (!u) return "menu";
-  return { coach: "coach", staff: "staff", owner: "owner", admin: "admin" }[u.role] || "menu";
+  return { coach: "coach", staff: "staff", owner: "owner" }[u.role] || "menu";
 }
 function ownerGym(u) { return GYMS.find(g => g.id === (u && u.gymId)) || GYMS[0]; }
 
@@ -216,40 +203,6 @@ function secStaff(u) {
   </div>`;
 }
 
-/* ---------- admin portal ---------- */
-function secAdmin(u) {
-  const users = getUsers();
-  const counts = ROLES.map(r => `${roleLabel(r)}: ${users.filter(x => (x.role || "user") === r).length}`).join(" · ");
-  return `
-  <h3>🛠️ ${t("adminPortal")}</h3>
-  <div class="h-sub">${t("adminSub")}</div>
-  <div class="stat-row">
-    <div class="stat"><div class="n">${users.length}</div><div class="l">${t("totalUsers")}</div></div>
-    <div class="stat"><div class="n">${GYMS.length}</div><div class="l">Gyms</div></div>
-  </div>
-  <div class="note">${t("byRole")}: ${counts}</div>
-  <div class="section">
-    <h4>📣 ${t("broadcast")}</h4>
-    <textarea id="adminMsg" class="control" rows="2" placeholder="${t("msgPlaceholder")}"></textarea>
-    <button class="btn" id="adminSend" style="margin-top:8px">${t("broadcastSend")}</button>
-  </div>
-  <div class="section">
-    <h4>⛔ ${t("banUser")}</h4>
-    <div class="form-two" style="align-items:end">
-      <div class="form-row" style="margin:0"><label>${t("memberEmail")}</label><input id="adminBanEmail" type="email" placeholder="user@email.com"></div>
-      <button class="btn" id="adminBan" style="background:#ef4444">${t("ban")}</button>
-    </div>
-  </div>
-  <div class="section">
-    <h4>🎁 ${t("giveaway")} · ${t("freeStuff")}</h4>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn ghost" id="adminGiveaway">🎲 ${t("giveawayRun")}</button>
-      <button class="btn ghost" id="adminFree">🎁 ${t("grantFree")}</button>
-    </div>
-    <div id="adminResult" class="note" style="margin-top:10px">&nbsp;</div>
-  </div>`;
-}
-
 /* ---------- event hooks (called by auth.js) ---------- */
 function handlePortalClick(e) {
   const hit = (s) => e.target.closest(s);
@@ -272,18 +225,5 @@ function handlePortalClick(e) {
     return true;
   }
   if (hit("#staffCheckin")) { toast(t("checkedIn")); return true; }
-  if (hit("#adminSend")) { toast(`${t("broadcastSent")} ${getUsers().length}`); return true; }
-  if (hit("#adminBan")) {
-    const email = (val("adminBanEmail") || "").trim().toLowerCase(), users = getUsers(), i = users.findIndex(x => x.email === email);
-    if (i >= 0) { users[i].banned = true; saveUsers(users); toast(t("bannedOk")); } else { toast(t("noUsers")); }
-    return true;
-  }
-  if (hit("#adminGiveaway")) {
-    const pool = getUsers().filter(x => (x.role || "user") === "user");
-    const el = document.getElementById("adminResult");
-    if (el) el.textContent = pool.length ? `${t("winner")} ${pool[Math.floor(Math.random() * pool.length)].name}` : t("noUsers");
-    return true;
-  }
-  if (hit("#adminFree")) { const el = document.getElementById("adminResult"); if (el) el.textContent = t("granted"); return true; }
   return false;
 }

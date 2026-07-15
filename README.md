@@ -76,7 +76,9 @@ Goal-based workout plans · real in-app payments & digital membership pass.
 | `styles.css` | All the styling and themes. |
 | `data.js` | **The content** — edit gyms, prices, hours, trainers here. |
 | `app.js` | The app logic (search, filters, favorites, translations). |
-| `auth.js` | Accounts: sign in/up, Google, profile, 2FA, privacy, settings. |
+| `auth.js` | Member and staff accounts: sign in/up, Google, profile, 2FA, privacy, settings. |
+| `netlify/functions/admin/` | Standalone, server-protected admin dashboard at `/admin`. |
+| `ADMIN-SETUP.md` | One-time password and authenticator setup for the admin area. |
 | `plan.js` | Personalized plan: intake form, workouts, meals, water, supplements, reminders. |
 | `nutrition.js` | AI calorie tracker: food photo analysis, editable results, daily food log & targets. |
 | `netlify/functions/analyze-food.js` | Optional cloud function for **real** photo AI (see `AI-SETUP.md`). |
