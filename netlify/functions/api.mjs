@@ -351,18 +351,22 @@ export default async (req) => {
     const myRole = me.profile.role;
     if (!["coach", "staff", "owner", "admin"].includes(myRole)) return json(403, { error: "Staff accounts only" });
     const myGym = me.profile.gymId || null;
+    // coaches see the members they train; owners, staff and admins
+    // also see the coaches and staff working at the gym
+    const visible = myRole === "coach" ? ["user"] : ["user", "coach", "staff"];
     const out = [];
     const { blobs } = await users.list();
     for (const b of blobs) {
       const rec = await users.get(b.key, { type: "json" });
       if (!rec) continue;
       const p = rec.profile || {};
-      if ((p.role || "user") !== "user") continue;
+      if (!visible.includes(p.role || "user")) continue;
+      if (rec.email === me.email) continue;
       if (myRole !== "admin" && myGym && p.gymId && p.gymId !== myGym) continue;
       const weights = (Array.isArray(p.weights) ? p.weights : []).slice().sort((a, b) => a.date - b.date);
       const allowContact = !p.privacy || p.privacy.trainerContact !== false;
       out.push({
-        id: p.id || rec.email, name: p.name || "", goal: p.goal || "fit",
+        id: p.id || rec.email, name: p.name || "", role: p.role || "user", goal: p.goal || "fit",
         age: p.age || null, gender: p.gender || "na", gymId: p.gymId || null,
         email: allowContact ? rec.email : null,
         phone: allowContact ? (p.phone || null) : null,

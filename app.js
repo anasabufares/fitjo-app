@@ -422,6 +422,9 @@ function renderCats() {
     ["supps", ico('<rect x="3.5" y="8.5" width="17" height="7" rx="3.5" transform="rotate(-25 12 12)"/><path d="M8.9 15.1l6.2-6.2"/>'), t("catSupps")],
     ["rank", ico('<path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H5.2A2.8 2.8 0 0 0 8 9M16 5h2.8A2.8 2.8 0 0 1 16 9M12 13v3.5M8.5 20h7M10 16.5h4v3.5h-4z"/>'), t("catRank")],
   ];
+  // gym owners manage their gym straight from the front page
+  const me = typeof currentUser === "function" ? currentUser() : null;
+  if (me && me.role === "owner") cats.push(["owner", ico('<path d="M3 21h18M5 21V9.5L12 4l7 5.5V21M9.5 21v-5.5h5V21"/>'), t("catMyGym")]);
   const active = featureSection || "gyms";
   el.innerHTML = cats.map(([k, ic, l]) => `
     <button class="cat ${active === k ? "on" : ""}" data-cat="${k}">

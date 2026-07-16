@@ -32,6 +32,7 @@ const PORTAL_I18N = {
     validateKey: "Validate membership key", keyPlaceholder: "e.g. FJ-4821-KD", validate: "Validate",
     keyValid: "✅ Valid — active membership", keyInvalid: "❌ Not found or expired", checkinsToday: "Check-ins today",
     checkinMember: "Check a member in", memberEmail: "Member email", checkin: "Check in", checkedIn: "Checked in ✓",
+    catMyGym: "My Gym", myTeam: "People at your gym",
     memberGoal: "Goal in the gym", memberDetails: "Member details", checkinsLabel: "Check-ins",
     loadingMembers: "Loading members…", noMembersYet: "No members at your gym yet — they'll appear here as soon as they sign up.",
     callBtn: "Call", membersByGoal: "What your members want",
@@ -66,6 +67,7 @@ const PORTAL_I18N = {
     validateKey: "تحقّق من مفتاح العضوية", keyPlaceholder: "مثال FJ-4821-KD", validate: "تحقّق",
     keyValid: "✅ صالح — عضوية فعّالة", keyInvalid: "❌ غير موجود أو منتهٍ", checkinsToday: "حضور اليوم",
     checkinMember: "تسجيل حضور عضو", memberEmail: "بريد العضو", checkin: "تسجيل حضور", checkedIn: "تم التسجيل ✓",
+    catMyGym: "ناديي", myTeam: "الأشخاص في ناديك",
     memberGoal: "الهدف في النادي", memberDetails: "تفاصيل العضو", checkinsLabel: "مرات الحضور",
     loadingMembers: "جارٍ تحميل الأعضاء…", noMembersYet: "لا أعضاء في ناديك بعد — سيظهرون هنا فور تسجيلهم.",
     callBtn: "اتصال", membersByGoal: "ماذا يريد أعضاؤك",
@@ -94,7 +96,7 @@ function roleIcon(r) { return { user: "👤", coach: "🧑‍🏫", staff: "🪪
 function isStaffRole(r) { return r === "coach" || r === "staff" || r === "owner" || r === "admin"; }
 function defaultSectionForRole(u) {
   if (!u) return "menu";
-  return { coach: "coach", staff: "staff", owner: "owner", admin: "admin" }[u.role] || "menu";
+  return { coach: "coach", staff: "staff", admin: "admin" }[u.role] || "menu"; // owner opens on the front page
 }
 function ownerGym(u) { return GYMS.find(g => g.id === (u && u.gymId)) || GYMS[0]; }
 
@@ -102,7 +104,7 @@ function ownerGym(u) { return GYMS.find(g => g.id === (u && u.gymId)) || GYMS[0]
 function navForRole(u) {
   const common = [["profile", "👤", t("myProfile")], ["preferences", "⚙️", t("preferences")], ["security", "🔒", t("security")]];
   if (u.role === "coach") return [["coach", "🧑‍🏫", t("coachPortal")], ...common];
-  if (u.role === "owner") return [["owner", "🏢", t("ownerDash")], ...common];
+  if (u.role === "owner") return common; // the owner dashboard lives on the front page (My Gym circle)
   if (u.role === "staff") return [["staff", "🪪", t("staffDash")], ...common];
   // regular member — side menu (nutrition/supplements/rank live on the
   // home-screen category circles; email moved inside Security)
@@ -127,6 +129,12 @@ const SUB_SAMPLE = [
   { name: "Karim Fares", goal: "build", months: 12, lastDays: 3, phone: "+962790000007", age: 24, gender: "m", startKg: 80, currentKg: 85 },
   { name: "Maya Tannous", goal: "fit", months: 1, lastDays: 0, phone: "+962790000008", age: 21, gender: "f", startKg: 55, currentKg: 55.5 },
 ];
+/* demo coaches & staff so the owner's team browser is never empty */
+const TEAM_SAMPLE = [
+  { name: "Hadi Mansour", role: "coach", phone: "+962795550001", age: 33, gender: "m", lastDays: 0, months: 8 },
+  { name: "Nour Qasem", role: "coach", phone: "+962795550002", age: 27, gender: "f", lastDays: 1, months: 4 },
+  { name: "Zaid Hamdan", role: "staff", phone: "+962795550003", age: 24, gender: "m", lastDays: 0, months: 12 },
+];
 function subscribers() {
   const real = getUsers().filter(x => x.role === "user").map(x => ({ id: x.id, name: x.name, goal: x.goal, email: x.email, banned: !!x.banned, real: true, lastDays: 0 }));
   const sample = SUB_SAMPLE.map((s, i) => ({ id: "s" + i, ...s, real: false, banned: false }));
@@ -140,20 +148,23 @@ let coachMsgTo = null, coachMsgName = "";
 let coachMembers = null;   // members loaded from the cloud (or this browser)
 let coachSel = null;       // member id opened in the detail view
 
-function resetPortals() { coachMembers = null; coachSel = null; coachMsgTo = null; }
+let ownerTab = "user"; // owner team browser: "user" | "coach" | "staff"
+function resetPortals() { coachMembers = null; coachSel = null; coachMsgTo = null; ownerTab = "user"; }
 
 const gymNameOf = (id) => { const g = GYMS.find(x => x.id === id); return g ? g.name[state.lang] : null; };
 const genderName = (g) => g === "f" ? t("genderF") : g === "m" ? t("genderM") : t("genderNA");
 
-/* members visible to this coach on this device (their gym + demo samples) */
+/* people visible on this device: the gym's members (+ coaches & staff
+   for the owner's view) plus demo samples */
 function localCoachMembers(u) {
+  const visible = u.role === "coach" ? ["user"] : ["user", "coach", "staff"];
   const real = getUsers()
-    .filter(x => (x.role || "user") === "user" && (!u.gymId || !x.gymId || x.gymId === u.gymId))
+    .filter(x => visible.includes(x.role || "user") && x.email !== u.email && (!u.gymId || !x.gymId || x.gymId === u.gymId))
     .map(x => {
       const ws = (x.weights || []).slice().sort((a, b) => a.date - b.date);
       const allow = !x.privacy || x.privacy.trainerContact !== false;
       return {
-        id: x.id, name: x.name, goal: x.goal || "fit", age: x.age || null, gender: x.gender || "na",
+        id: x.id, name: x.name, role: x.role || "user", goal: x.goal || "fit", age: x.age || null, gender: x.gender || "na",
         email: allow ? x.email : null, phone: allow ? (x.phone || null) : null, gymId: x.gymId || null,
         points: x.points || 0, checkins: (x.checkinDates || []).length,
         startKg: ws.length ? ws[0].kg : null, currentKg: ws.length ? ws[ws.length - 1].kg : null,
@@ -161,21 +172,26 @@ function localCoachMembers(u) {
       };
     });
   const sample = SUB_SAMPLE.map((s, i) => ({
-    id: "s" + i, ...s, email: null, gymId: u.gymId || null,
+    id: "s" + i, ...s, role: "user", email: null, gymId: u.gymId || null,
     points: 40 + i * 7, checkins: 3 + i * 2, joined: Date.now() - s.months * 30 * 86400000,
     banned: false, real: false,
   }));
-  return real.concat(sample);
+  const team = u.role === "coach" ? [] : TEAM_SAMPLE.map((s, i) => ({
+    id: "t" + i, ...s, goal: null, email: null, gymId: u.gymId || null,
+    points: 0, checkins: 20 + i * 5, joined: Date.now() - s.months * 30 * 86400000,
+    startKg: null, currentKg: null, banned: false, real: false,
+  }));
+  return real.concat(sample, team);
 }
 
 async function loadCoachMembers(u) {
   let cloud = null;
   if (window.GymoraCloud && GymoraCloud.hasSession()) {
     const r = await GymoraCloud.listMembers();
-    if (r.ok && r.data) cloud = (r.data.members || []).map(m => ({ ...m, lastDays: m.checkins ? 0 : 3, real: true }));
+    if (r.ok && r.data) cloud = (r.data.members || []).map(m => ({ ...m, role: m.role || "user", lastDays: m.checkins ? 0 : 3, real: true }));
   }
   coachMembers = cloud != null
-    ? cloud.concat(localCoachMembers(u).filter(x => !x.real)) // real members from the cloud + demo samples
+    ? cloud.concat(localCoachMembers(u).filter(x => !x.real)) // real people from the cloud + demo samples
     : localCoachMembers(u);
   reRenderSection();
 }
@@ -193,14 +209,17 @@ function composeHTML() {
 }
 
 function coachMemberHTML(m) {
+  const me = currentUser();
+  const backLabel = me && me.role === "owner" ? t("ownerDash") : t("coachPortal");
+  const isMember = (m.role || "user") === "user";
   const kv = (k, v) => (v == null || v === "") ? "" : `<div class="kv"><span>${k}</span><span>${esc(String(v))}</span></div>`;
   const diff = (m.startKg != null && m.currentKg != null) ? m.currentKg - m.startKg : null;
   return `
-  <button class="linkbtn" id="coachBack" style="display:inline-block;margin:0 0 12px">‹ ${t("coachPortal")}</button>
+  <button class="linkbtn" id="coachBack" style="display:inline-block;margin:0 0 12px">‹ ${backLabel}</button>
   <div class="menu-head" style="margin-bottom:12px">
     <div class="avatar-lg">${initials(m.name)}</div>
     <div class="mh-txt"><div class="acct-name">${esc(m.name)}${m.banned ? ` <span class="pill off">${t("banned")}</span>` : ""}</div>
-      <div class="acct-email">🎯 ${t("memberGoal")}: <b>${goalLabel(m.goal)}</b></div></div>
+      <div class="acct-email">${isMember ? `🎯 ${t("memberGoal")}: <b>${goalLabel(m.goal)}</b>` : `${roleIcon(m.role)} <b>${roleLabel(m.role)}</b>`}</div></div>
   </div>
   ${composeHTML()}
   <div class="stat-row">
@@ -210,7 +229,7 @@ function coachMemberHTML(m) {
   </div>
   <div class="section">
     <h4>${t("memberDetails")}</h4>
-    ${kv(t("memberGoal"), goalLabel(m.goal))}
+    ${isMember ? kv(t("memberGoal"), goalLabel(m.goal)) : kv(t("accountType"), roleLabel(m.role))}
     ${kv(t("gender"), genderName(m.gender))}
     ${kv(t("phone"), m.phone)}
     ${kv(t("email"), m.email)}
@@ -229,7 +248,7 @@ function coachMemberHTML(m) {
 
 function secCoach(u) {
   if (coachMembers === null) setTimeout(() => loadCoachMembers(u), 0);
-  const subs = coachMembers || [];
+  const subs = (coachMembers || []).filter(x => (x.role || "user") === "user");
   if (coachSel != null) {
     const m = subs.find(x => String(x.id) === String(coachSel));
     if (m) return coachMemberHTML(m);
@@ -262,20 +281,32 @@ function secCoach(u) {
   </div>`}`;
 }
 
-/* ---------- gym owner dashboard ---------- */
+/* ---------- gym owner dashboard (front-page feature view) ---------- */
 function secOwner(u) {
+  if (!u || u.role !== "owner") { if (typeof showList === "function") setTimeout(showList, 0); return ""; }
+  if (coachMembers === null) setTimeout(() => loadCoachMembers(u), 0);
+  const team = coachMembers || [];
+  if (coachSel != null) {
+    const m = team.find(x => String(x.id) === String(coachSel));
+    if (m) return coachMemberHTML(m);
+    coachSel = null;
+  }
   const gym = ownerGym(u);
   const occ = occupancy(gym);
   const head = Math.round(occ.pct / 100 * GYM_CAPACITY);
-  const subs = subscribers();
-  const revenue = subs.length * monthlyJOD(gym);
+  const members = team.filter(x => (x.role || "user") === "user");
+  const revenue = members.length * monthlyJOD(gym);
+  const count = (r) => team.filter(x => (x.role || "user") === r).length;
+  const shown = team.filter(x => (x.role || "user") === ownerTab);
+  const tabs = [["user", "👤", t("roleMember")], ["coach", "🧑‍🏫", t("roleCoach")], ["staff", "🪪", t("roleStaff")]];
   setTimeout(loadOwnerKeys, 0); // populate the keys list once the section is in the DOM
   return `
   <h3>🏢 ${t("ownerDash")}</h3>
   <div class="h-sub">${gym.name[state.lang]} · ${t("ownerSub")}</div>
+  ${composeHTML()}
   <div class="stat-row">
     <div class="stat"><div class="n" style="color:var(--accent)">${head}</div><div class="l">${t("inGymNow")}</div></div>
-    <div class="stat"><div class="n">${subs.length}</div><div class="l">${t("totalSubs")}</div></div>
+    <div class="stat"><div class="n">${members.length}</div><div class="l">${t("totalSubs")}</div></div>
     <div class="stat"><div class="n" style="font-size:16px">${fmtPrice(revenue)}</div><div class="l">${t("monthlyRevenue")}</div></div>
   </div>
   <div class="section">
@@ -284,20 +315,26 @@ function secOwner(u) {
     <div class="kv"><span>${t("howBusy")}</span><span>${head} / ${GYM_CAPACITY}</span></div>
   </div>
   <div class="section">
-    <h4>👥 ${t("membersMgmt")}</h4>
-    <div class="portal-list">
-      ${subs.map(s => `
-        <div class="portal-row">
-          <div class="pr-l">${subAvatar(s)}<div><div class="pr-name">${esc(s.name)}${s.banned ? ` <span class="pill off">${t("banned")}</span>` : ""}</div>
-            <div class="pr-meta">${goalLabel(s.goal)}</div></div></div>
-          <div class="pr-r">
-            <button class="btn ghost sm" data-alert="${s.id}">🔔 ${t("alert")}</button>
-            ${s.real
-              ? `<button class="btn ghost sm" data-ban="${esc(s.email)}" style="color:#ef4444">${s.banned ? t("unban") : t("ban")}</button>`
-              : `<button class="btn ghost sm" data-ban-demo="1" style="color:#ef4444">${t("ban")}</button>`}
-          </div>
-        </div>`).join("")}
+    <h4>👥 ${t("myTeam")}</h4>
+    <div class="seg" style="margin-bottom:12px">
+      ${tabs.map(([r, ic, l]) => `<button data-oteam="${r}" class="${ownerTab === r ? "active" : ""}">${ic} ${l} · ${count(r)}</button>`).join("")}
     </div>
+    ${coachMembers === null ? `<div class="note">${t("loadingMembers")}</div>` : `
+    <div class="portal-list">
+      ${shown.length ? shown.map(s => `
+        <div class="portal-row" data-member="${esc(String(s.id))}" style="cursor:pointer">
+          <div class="pr-l">${subAvatar(s)}<div><div class="pr-name">${esc(s.name)}${s.banned ? ` <span class="pill off">${t("banned")}</span>` : ""}</div>
+            <div class="pr-meta">${ownerTab === "user" ? `🎯 ${goalLabel(s.goal)}${s.age ? " · " + s.age : ""}` : `${s.age ? s.age + " · " : ""}${t("lastSeen")}: ${agoLabel(s.lastDays || 0)}`}</div></div></div>
+          <div class="pr-r">
+            ${ownerTab === "user" ? `
+              <button class="btn ghost sm" data-alert="${esc(String(s.id))}">🔔</button>
+              ${s.real && s.email
+                ? `<button class="btn ghost sm" data-ban="${esc(s.email)}" style="color:#ef4444">${s.banned ? t("unban") : t("ban")}</button>`
+                : `<button class="btn ghost sm" data-ban-demo="1" style="color:#ef4444">${t("ban")}</button>`}` : ""}
+            <span class="mi-arrow">›</span>
+          </div>
+        </div>`).join("") : `<div class="note">${t("noMembersYet")}</div>`}
+    </div>`}
   </div>
   <div class="section">
     <h4>🔑 ${t("teamKeys")}</h4>
@@ -445,15 +482,18 @@ function handlePortalClick(e) {
   if (hit("#coachSend")) { const v = (val("coachMsg") || "").trim(); coachMsgTo = null; reRenderSection(); toast(v ? `${t("msgSent")} ✓` : t("msgSent")); return true; }
   if (hit("#coachCancel")) { coachMsgTo = null; reRenderSection(); return true; }
   if (hit("#coachBack")) { coachSel = null; coachMsgTo = null; reRenderSection(); return true; }
-  const mem = hit("[data-member]"); if (mem) { coachSel = mem.dataset.member; coachMsgTo = null; reRenderSection(); return true; }
+  const oteam = hit("[data-oteam]"); if (oteam) { ownerTab = oteam.dataset.oteam; reRenderSection(); return true; }
   const alert = hit("[data-alert]"); if (alert) { toast(t("alerted")); return true; }
   const ban = hit("[data-ban]");
   if (ban) {
     const email = ban.dataset.ban, users = getUsers(), i = users.findIndex(x => x.email === email);
-    if (i >= 0) { users[i].banned = !users[i].banned; saveUsers(users); toast(users[i].banned ? t("bannedOk") : t("unbannedOk")); reRenderSection(); }
+    if (i >= 0) { users[i].banned = !users[i].banned; saveUsers(users); toast(users[i].banned ? t("bannedOk") : t("unbannedOk")); coachMembers = null; }
+    else toast(t("demoOnly")); // account lives in the cloud only — local ban n/a
+    reRenderSection();
     return true;
   }
   if (hit("[data-ban-demo]")) { toast(`${t("demoOnly")} — ${t("bannedOk")}`); return true; }
+  const mem = hit("[data-member]"); if (mem) { coachSel = mem.dataset.member; coachMsgTo = null; reRenderSection(); return true; }
   if (hit("#ownerKeyGen")) { void ownerGenerateKey(); return true; }
   const ck = hit("[data-copykey]"); if (ck) { copyKeyText(ck.dataset.copykey); return true; }
   const rk = hit("[data-revokekey]"); if (rk) { void ownerRevokeKey(rk.dataset.revokekey); return true; }

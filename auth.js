@@ -578,7 +578,10 @@ function afterAuth() {
   renderAll();
   if (typeof startReminderScheduler === "function") startReminderScheduler();
   const u = currentUser();
-  if (u && typeof isStaffRole === "function" && isStaffRole(u.role)) {
+  if (u && u.role === "owner" && typeof openFeature === "function") {
+    closeAuth();
+    openFeature("owner"); // the owner dashboard lives on the front page
+  } else if (u && typeof isStaffRole === "function" && isStaffRole(u.role)) {
     openAuth("account"); // lands on the role's portal (see openAuth default section)
   } else {
     closeAuth();
@@ -814,7 +817,8 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!["coach", "owner", "staff"].includes(seg)) return;
   const u = currentUser();
   if (u) {
-    openAuth("account"); // lands on the signed-in user's own portal
+    if (u.role === "owner" && typeof openFeature === "function") openFeature("owner");
+    else openAuth("account"); // lands on the signed-in user's own portal
   } else {
     openAuth("signin");
     const sel = document.getElementById("inRoleSignin");
