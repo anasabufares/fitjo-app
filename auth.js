@@ -192,6 +192,7 @@ function openAuth(view) {
   if (view === "account") { acctSection = (typeof defaultSectionForRole === "function" ? defaultSectionForRole(currentUser()) : "menu"); secSub = "hub"; }
   if (typeof resetPlanEditing === "function") resetPlanEditing();
   if (typeof resetNutrition === "function") resetNutrition();
+  if (typeof resetPortals === "function") resetPortals(); // fresh member list each time
   document.getElementById("authBack").classList.add("open");
   document.body.style.overflow = "hidden";
   renderAuthView();

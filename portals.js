@@ -32,6 +32,9 @@ const PORTAL_I18N = {
     validateKey: "Validate membership key", keyPlaceholder: "e.g. FJ-4821-KD", validate: "Validate",
     keyValid: "✅ Valid — active membership", keyInvalid: "❌ Not found or expired", checkinsToday: "Check-ins today",
     checkinMember: "Check a member in", memberEmail: "Member email", checkin: "Check in", checkedIn: "Checked in ✓",
+    memberGoal: "Goal in the gym", memberDetails: "Member details", checkinsLabel: "Check-ins",
+    loadingMembers: "Loading members…", noMembersYet: "No members at your gym yet — they'll appear here as soon as they sign up.",
+    callBtn: "Call", membersByGoal: "What your members want",
     teamKeys: "Team access keys", teamKeysSub: "Generate a one-time key for a new coach or staff member at your gym. They use it once to create their account — keys are AES-128 secured. Gym owner keys come only from GYMORA.",
     keyType: "Key type", generateKey: "Generate key", newKeyIs: "New key — copy it and send it once:",
     keyCopied: "Key copied ✓", noKeysYet: "No keys yet. Generate one for your first coach or staff member.",
@@ -63,6 +66,9 @@ const PORTAL_I18N = {
     validateKey: "تحقّق من مفتاح العضوية", keyPlaceholder: "مثال FJ-4821-KD", validate: "تحقّق",
     keyValid: "✅ صالح — عضوية فعّالة", keyInvalid: "❌ غير موجود أو منتهٍ", checkinsToday: "حضور اليوم",
     checkinMember: "تسجيل حضور عضو", memberEmail: "بريد العضو", checkin: "تسجيل حضور", checkedIn: "تم التسجيل ✓",
+    memberGoal: "الهدف في النادي", memberDetails: "تفاصيل العضو", checkinsLabel: "مرات الحضور",
+    loadingMembers: "جارٍ تحميل الأعضاء…", noMembersYet: "لا أعضاء في ناديك بعد — سيظهرون هنا فور تسجيلهم.",
+    callBtn: "اتصال", membersByGoal: "ماذا يريد أعضاؤك",
     teamKeys: "مفاتيح وصول الفريق", teamKeysSub: "أنشئ مفتاحاً لمرة واحدة لمدرّب أو موظّف جديد في ناديك. يستخدمه مرة واحدة لإنشاء حسابه — المفاتيح مؤمَّنة بتشفير AES-128. مفاتيح أصحاب الأندية تصدر من GYMORA فقط.",
     keyType: "نوع المفتاح", generateKey: "إنشاء مفتاح", newKeyIs: "مفتاح جديد — انسخه وأرسله مرة واحدة:",
     keyCopied: "تم نسخ المفتاح ✓", noKeysYet: "لا مفاتيح بعد. أنشئ واحداً لأول مدرّب أو موظّف.",
@@ -112,14 +118,14 @@ function navForRole(u) {
 
 /* ---------- demo subscribers ---------- */
 const SUB_SAMPLE = [
-  { name: "Omar Khalil", goal: "build", months: 3, lastDays: 1, phone: "+962790000001" },
-  { name: "Lana Haddad", goal: "lose", months: 1, lastDays: 0, phone: "+962790000002" },
-  { name: "Yousef Nseir", goal: "gain", months: 12, lastDays: 4, phone: "+962790000003" },
-  { name: "Rana Aziz", goal: "fit", months: 1, lastDays: 2, phone: "+962790000004" },
-  { name: "Sami Odeh", goal: "recomp", months: 3, lastDays: 7, phone: "+962790000005" },
-  { name: "Dina Salem", goal: "lose", months: 1, lastDays: 1, phone: "+962790000006" },
-  { name: "Karim Fares", goal: "build", months: 12, lastDays: 3, phone: "+962790000007" },
-  { name: "Maya Tannous", goal: "fit", months: 1, lastDays: 0, phone: "+962790000008" },
+  { name: "Omar Khalil", goal: "build", months: 3, lastDays: 1, phone: "+962790000001", age: 27, gender: "m", startKg: 70, currentKg: 74 },
+  { name: "Lana Haddad", goal: "lose", months: 1, lastDays: 0, phone: "+962790000002", age: 31, gender: "f", startKg: 78, currentKg: 74.5 },
+  { name: "Yousef Nseir", goal: "gain", months: 12, lastDays: 4, phone: "+962790000003", age: 22, gender: "m", startKg: 66, currentKg: 69 },
+  { name: "Rana Aziz", goal: "fit", months: 1, lastDays: 2, phone: "+962790000004", age: 26, gender: "f", startKg: 60, currentKg: 60 },
+  { name: "Sami Odeh", goal: "recomp", months: 3, lastDays: 7, phone: "+962790000005", age: 35, gender: "m", startKg: 88, currentKg: 86 },
+  { name: "Dina Salem", goal: "lose", months: 1, lastDays: 1, phone: "+962790000006", age: 29, gender: "f", startKg: 90, currentKg: 84 },
+  { name: "Karim Fares", goal: "build", months: 12, lastDays: 3, phone: "+962790000007", age: 24, gender: "m", startKg: 80, currentKg: 85 },
+  { name: "Maya Tannous", goal: "fit", months: 1, lastDays: 0, phone: "+962790000008", age: 21, gender: "f", startKg: 55, currentKg: 55.5 },
 ];
 function subscribers() {
   const real = getUsers().filter(x => x.role === "user").map(x => ({ id: x.id, name: x.name, goal: x.goal, email: x.email, banned: !!x.banned, real: true, lastDays: 0 }));
@@ -131,9 +137,51 @@ function subAvatar(s) { return `<div class="avatar-sm portal-av">${initials(s.na
 
 /* ---------- coach portal ---------- */
 let coachMsgTo = null, coachMsgName = "";
-function secCoach(u) {
-  const subs = subscribers();
-  const compose = coachMsgTo ? `
+let coachMembers = null;   // members loaded from the cloud (or this browser)
+let coachSel = null;       // member id opened in the detail view
+
+function resetPortals() { coachMembers = null; coachSel = null; coachMsgTo = null; }
+
+const gymNameOf = (id) => { const g = GYMS.find(x => x.id === id); return g ? g.name[state.lang] : null; };
+const genderName = (g) => g === "f" ? t("genderF") : g === "m" ? t("genderM") : t("genderNA");
+
+/* members visible to this coach on this device (their gym + demo samples) */
+function localCoachMembers(u) {
+  const real = getUsers()
+    .filter(x => (x.role || "user") === "user" && (!u.gymId || !x.gymId || x.gymId === u.gymId))
+    .map(x => {
+      const ws = (x.weights || []).slice().sort((a, b) => a.date - b.date);
+      const allow = !x.privacy || x.privacy.trainerContact !== false;
+      return {
+        id: x.id, name: x.name, goal: x.goal || "fit", age: x.age || null, gender: x.gender || "na",
+        email: allow ? x.email : null, phone: allow ? (x.phone || null) : null, gymId: x.gymId || null,
+        points: x.points || 0, checkins: (x.checkinDates || []).length,
+        startKg: ws.length ? ws[0].kg : null, currentKg: ws.length ? ws[ws.length - 1].kg : null,
+        joined: x.createdAt || null, banned: !!x.banned, lastDays: 0, real: true,
+      };
+    });
+  const sample = SUB_SAMPLE.map((s, i) => ({
+    id: "s" + i, ...s, email: null, gymId: u.gymId || null,
+    points: 40 + i * 7, checkins: 3 + i * 2, joined: Date.now() - s.months * 30 * 86400000,
+    banned: false, real: false,
+  }));
+  return real.concat(sample);
+}
+
+async function loadCoachMembers(u) {
+  let cloud = null;
+  if (window.GymoraCloud && GymoraCloud.hasSession()) {
+    const r = await GymoraCloud.listMembers();
+    if (r.ok && r.data) cloud = (r.data.members || []).map(m => ({ ...m, lastDays: m.checkins ? 0 : 3, real: true }));
+  }
+  coachMembers = cloud != null
+    ? cloud.concat(localCoachMembers(u).filter(x => !x.real)) // real members from the cloud + demo samples
+    : localCoachMembers(u);
+  reRenderSection();
+}
+
+function composeHTML() {
+  return coachMsgTo ? `
     <div class="section compose">
       <h4>✉️ ${t("message")} — ${esc(coachMsgName)}</h4>
       <textarea id="coachMsg" class="control" rows="3" placeholder="${t("msgPlaceholder")}"></textarea>
@@ -142,25 +190,76 @@ function secCoach(u) {
         <button class="btn ghost" id="coachCancel">${t("cancel")}</button>
       </div>
     </div>` : "";
+}
+
+function coachMemberHTML(m) {
+  const kv = (k, v) => (v == null || v === "") ? "" : `<div class="kv"><span>${k}</span><span>${esc(String(v))}</span></div>`;
+  const diff = (m.startKg != null && m.currentKg != null) ? m.currentKg - m.startKg : null;
+  return `
+  <button class="linkbtn" id="coachBack" style="display:inline-block;margin:0 0 12px">‹ ${t("coachPortal")}</button>
+  <div class="menu-head" style="margin-bottom:12px">
+    <div class="avatar-lg">${initials(m.name)}</div>
+    <div class="mh-txt"><div class="acct-name">${esc(m.name)}${m.banned ? ` <span class="pill off">${t("banned")}</span>` : ""}</div>
+      <div class="acct-email">🎯 ${t("memberGoal")}: <b>${goalLabel(m.goal)}</b></div></div>
+  </div>
+  ${composeHTML()}
+  <div class="stat-row">
+    <div class="stat"><div class="n">${m.age ?? "—"}</div><div class="l">${t("age")}</div></div>
+    <div class="stat"><div class="n">${m.currentKg ?? "—"}${m.currentKg != null ? "<small> kg</small>" : ""}</div><div class="l">${t("currentWeight")}</div></div>
+    <div class="stat"><div class="n" style="color:${diff == null || diff === 0 ? "var(--text)" : diff < 0 ? "#16a34a" : "#dc2626"}">${diff == null ? "—" : (diff > 0 ? "+" : "") + diff.toFixed(1)}</div><div class="l">${t("change")}</div></div>
+  </div>
+  <div class="section">
+    <h4>${t("memberDetails")}</h4>
+    ${kv(t("memberGoal"), goalLabel(m.goal))}
+    ${kv(t("gender"), genderName(m.gender))}
+    ${kv(t("phone"), m.phone)}
+    ${kv(t("email"), m.email)}
+    ${kv(t("yourGym"), gymNameOf(m.gymId))}
+    ${kv(t("pointsRewards"), m.points)}
+    ${kv(t("checkinsLabel"), m.checkins)}
+    ${kv(t("memberSince"), m.joined ? fmtDate(m.joined) : null)}
+    ${kv(t("startWeight"), m.startKg != null ? m.startKg + " kg" : null)}
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn ghost sm" data-msg="${esc(String(m.id))}" data-msg-name="${esc(m.name)}">✉️ ${t("message")}</button>
+    ${m.phone ? `<a class="btn ghost sm" href="tel:${m.phone}">📞 ${t("callBtn")}</a>
+      <a class="btn sm" style="background:#25D366;color:#fff" href="https://wa.me/${m.phone.replace("+", "")}" target="_blank" rel="noopener">🟢 WhatsApp</a>` : ""}
+  </div>`;
+}
+
+function secCoach(u) {
+  if (coachMembers === null) setTimeout(() => loadCoachMembers(u), 0);
+  const subs = coachMembers || [];
+  if (coachSel != null) {
+    const m = subs.find(x => String(x.id) === String(coachSel));
+    if (m) return coachMemberHTML(m);
+    coachSel = null;
+  }
+  const goals = {};
+  subs.forEach(s => { goals[s.goal] = (goals[s.goal] || 0) + 1; });
+  const gym = u.gymId ? gymNameOf(u.gymId) : null;
   return `
   <h3>🧑‍🏫 ${t("coachPortal")}</h3>
-  <div class="h-sub">${t("subsSub")}</div>
-  ${compose}
+  <div class="h-sub">${t("subsSub")}${gym ? " · " + gym : ""}</div>
+  ${composeHTML()}
   <div class="stat-row">
     <div class="stat"><div class="n">${subs.length}</div><div class="l">${t("subscribers")}</div></div>
     <div class="stat"><div class="n">${subs.filter(s => s.lastDays <= 1).length}</div><div class="l">${t("today")}</div></div>
   </div>
+  ${Object.keys(goals).length ? `
+  <div style="margin:2px 0 12px">
+    <div style="font-weight:700;font-size:13px;margin-bottom:6px">🎯 ${t("membersByGoal")}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${Object.keys(goals).map(g => `<span class="pill">${goalLabel(g)} · ${goals[g]}</span>`).join("")}</div>
+  </div>` : ""}
+  ${coachMembers === null ? `<div class="note">${t("loadingMembers")}</div>` : `
   <div class="portal-list">
-    ${subs.map(s => `
-      <div class="portal-row">
+    ${subs.length ? subs.map(s => `
+      <div class="portal-row" data-member="${esc(String(s.id))}" style="cursor:pointer">
         <div class="pr-l">${subAvatar(s)}<div><div class="pr-name">${esc(s.name)}${s.banned ? ` <span class="pill off">${t("banned")}</span>` : ""}</div>
-          <div class="pr-meta">${goalLabel(s.goal)} · ${t("lastSeen")}: ${agoLabel(s.lastDays)}</div></div></div>
-        <div class="pr-r">
-          <button class="btn ghost sm" data-msg="${s.id}" data-msg-name="${esc(s.name)}">✉️ ${t("message")}</button>
-          ${s.phone ? `<a class="btn ghost sm" href="tel:${s.phone}">📞</a><a class="btn sm" style="background:#25D366" href="https://wa.me/${s.phone.replace("+", "")}" target="_blank" rel="noopener">🟢</a>` : ""}
-        </div>
-      </div>`).join("")}
-  </div>`;
+          <div class="pr-meta">🎯 ${goalLabel(s.goal)}${s.age ? " · " + s.age : ""} · ${t("lastSeen")}: ${agoLabel(s.lastDays)}</div></div></div>
+        <div class="pr-r"><span class="mi-arrow">›</span></div>
+      </div>`).join("") : `<div class="note">${t("noMembersYet")}</div>`}
+  </div>`}`;
 }
 
 /* ---------- gym owner dashboard ---------- */
@@ -345,6 +444,8 @@ function handlePortalClick(e) {
   if (msg) { coachMsgTo = msg.dataset.msg; coachMsgName = msg.dataset.msgName || ""; reRenderSection(); return true; }
   if (hit("#coachSend")) { const v = (val("coachMsg") || "").trim(); coachMsgTo = null; reRenderSection(); toast(v ? `${t("msgSent")} ✓` : t("msgSent")); return true; }
   if (hit("#coachCancel")) { coachMsgTo = null; reRenderSection(); return true; }
+  if (hit("#coachBack")) { coachSel = null; coachMsgTo = null; reRenderSection(); return true; }
+  const mem = hit("[data-member]"); if (mem) { coachSel = mem.dataset.member; coachMsgTo = null; reRenderSection(); return true; }
   const alert = hit("[data-alert]"); if (alert) { toast(t("alerted")); return true; }
   const ban = hit("[data-ban]");
   if (ban) {

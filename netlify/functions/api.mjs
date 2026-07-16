@@ -340,6 +340,41 @@ export default async (req) => {
     }
   }
 
+  /* ---- members list for gym staff (coach / staff / owner / admin) ----
+     Returns member accounts (role "user") at the requester's gym so a
+     coach can see who they train and what each member wants to achieve.
+     Members who turned off "trainer contact" in privacy keep their
+     email and phone hidden. ---- */
+  if (req.method === "GET" && path === "/members") {
+    const me = await requester();
+    if (!me) return json(401, { error: "Not signed in" });
+    const myRole = me.profile.role;
+    if (!["coach", "staff", "owner", "admin"].includes(myRole)) return json(403, { error: "Staff accounts only" });
+    const myGym = me.profile.gymId || null;
+    const out = [];
+    const { blobs } = await users.list();
+    for (const b of blobs) {
+      const rec = await users.get(b.key, { type: "json" });
+      if (!rec) continue;
+      const p = rec.profile || {};
+      if ((p.role || "user") !== "user") continue;
+      if (myRole !== "admin" && myGym && p.gymId && p.gymId !== myGym) continue;
+      const weights = (Array.isArray(p.weights) ? p.weights : []).slice().sort((a, b) => a.date - b.date);
+      const allowContact = !p.privacy || p.privacy.trainerContact !== false;
+      out.push({
+        id: p.id || rec.email, name: p.name || "", goal: p.goal || "fit",
+        age: p.age || null, gender: p.gender || "na", gymId: p.gymId || null,
+        email: allowContact ? rec.email : null,
+        phone: allowContact ? (p.phone || null) : null,
+        points: p.points || 0, checkins: (p.checkinDates || []).length,
+        startKg: weights.length ? weights[0].kg : null,
+        currentKg: weights.length ? weights[weights.length - 1].kg : null,
+        joined: rec.createdAt || null, banned: !!p.banned,
+      });
+    }
+    return json(200, { members: out });
+  }
+
   /* ---- profile (requires Bearer token) ---- */
   if (path === "/profile") {
     const auth = req.headers.get("authorization") || "";
