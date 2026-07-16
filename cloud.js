@@ -75,6 +75,9 @@
     /* members of the requesting staff account's gym (coach portal) */
     listMembers: () => callFull("/members", "GET", null, true),
 
+    /* owner assigns a job role to a staff account */
+    setStaffRole: (email, staffRole) => callFull("/members", "PUT", { email, staffRole }, true),
+
     /* access keys (admin console / owner dashboard) */
     createKey: (role, gymId) => callFull("/keys", "POST", { role, gymId }, true),
     listKeys: () => callFull("/keys", "GET", null, true),

@@ -367,6 +367,7 @@ export default async (req) => {
       const allowContact = !p.privacy || p.privacy.trainerContact !== false;
       out.push({
         id: p.id || rec.email, name: p.name || "", role: p.role || "user", goal: p.goal || "fit",
+        staffRole: p.staffRole || null,
         age: p.age || null, gender: p.gender || "na", gymId: p.gymId || null,
         email: allowContact ? rec.email : null,
         phone: allowContact ? (p.phone || null) : null,
@@ -377,6 +378,28 @@ export default async (req) => {
       });
     }
     return json(200, { members: out });
+  }
+
+  /* ---- staff job role, assigned by the gym owner (or an admin) ---- */
+  if (req.method === "PUT" && path === "/members") {
+    const me = await requester();
+    if (!me) return json(401, { error: "Not signed in" });
+    if (!["owner", "admin"].includes(me.profile.role)) return json(403, { error: "Gym owners only" });
+    let body; try { body = await req.json(); } catch { return json(400, { error: "Invalid JSON" }); }
+    const target = String(body.email || "").trim().toLowerCase();
+    const rec = await users.get(target, { type: "json" });
+    if (!rec) return json(404, { error: "Account not found" });
+    const tp = rec.profile || {};
+    if ((tp.role || "user") !== "staff") return json(400, { error: "Only gym staff accounts can be assigned a staff role" });
+    if (me.profile.role !== "admin" && me.profile.gymId && tp.gymId && tp.gymId !== me.profile.gymId) {
+      return json(403, { error: "That person works at a different gym" });
+    }
+    const STAFF_ROLES = ["manager", "reception", "trainer", "nutrition", "cleaning", "maintenance", "security"];
+    const staffRole = body.staffRole ? String(body.staffRole) : null;
+    if (staffRole && !STAFF_ROLES.includes(staffRole)) return json(400, { error: "Unknown staff role" });
+    rec.profile = { ...tp, staffRole };
+    await users.setJSON(target, rec);
+    return json(200, { ok: true, staffRole });
   }
 
   /* ---- profile (requires Bearer token) ---- */

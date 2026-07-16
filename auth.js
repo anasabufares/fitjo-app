@@ -781,6 +781,7 @@ function onAuthChange(e) {
     if (el) el.style.display = ["coach", "staff", "owner"].includes(e.target.value) ? "" : "none";
     return;
   }
+  if (typeof handlePortalChange === "function" && handlePortalChange(e)) return;
   if (typeof handlePlanChange === "function" && handlePlanChange(e)) return;
   if (typeof handleFoodChange === "function" && handleFoodChange(e)) return;
   if (typeof handleEngageChange === "function" && handleEngageChange(e)) return;

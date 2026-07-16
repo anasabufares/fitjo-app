@@ -33,6 +33,8 @@ const PORTAL_I18N = {
     keyValid: "✅ Valid — active membership", keyInvalid: "❌ Not found or expired", checkinsToday: "Check-ins today",
     checkinMember: "Check a member in", memberEmail: "Member email", checkin: "Check in", checkedIn: "Checked in ✓",
     catMyGym: "My Gym", myTeam: "People at your gym",
+    staffRoleLabel: "Staff role", assignRoleSub: "Choose what this person does at your gym — they'll see it on their dashboard.",
+    roleUpdated: "Role updated ✓", noRoleYet: "No role assigned yet",
     memberGoal: "Goal in the gym", memberDetails: "Member details", checkinsLabel: "Check-ins",
     loadingMembers: "Loading members…", noMembersYet: "No members at your gym yet — they'll appear here as soon as they sign up.",
     callBtn: "Call", membersByGoal: "What your members want",
@@ -68,6 +70,8 @@ const PORTAL_I18N = {
     keyValid: "✅ صالح — عضوية فعّالة", keyInvalid: "❌ غير موجود أو منتهٍ", checkinsToday: "حضور اليوم",
     checkinMember: "تسجيل حضور عضو", memberEmail: "بريد العضو", checkin: "تسجيل حضور", checkedIn: "تم التسجيل ✓",
     catMyGym: "ناديي", myTeam: "الأشخاص في ناديك",
+    staffRoleLabel: "دور الموظّف", assignRoleSub: "اختر مهمة هذا الشخص في ناديك — سيراها على لوحته.",
+    roleUpdated: "تم تحديث الدور ✓", noRoleYet: "لم يُحدَّد دور بعد",
     memberGoal: "الهدف في النادي", memberDetails: "تفاصيل العضو", checkinsLabel: "مرات الحضور",
     loadingMembers: "جارٍ تحميل الأعضاء…", noMembersYet: "لا أعضاء في ناديك بعد — سيظهرون هنا فور تسجيلهم.",
     callBtn: "اتصال", membersByGoal: "ماذا يريد أعضاؤك",
@@ -88,6 +92,18 @@ Object.assign(I18N.ar, PORTAL_I18N.ar);
 
 const ADMIN_CODE = "GYMORA-ADMIN";
 const GYM_CAPACITY = 150;
+
+/* ---------- staff job roles (assigned by the gym owner) ---------- */
+const STAFF_ROLES = {
+  manager: { en: "Manager", ar: "مدير" },
+  reception: { en: "Receptionist", ar: "موظّف استقبال" },
+  trainer: { en: "Floor trainer", ar: "مدرّب صالة" },
+  nutrition: { en: "Nutrition specialist", ar: "أخصائي تغذية" },
+  cleaning: { en: "Cleaning", ar: "نظافة" },
+  maintenance: { en: "Maintenance", ar: "صيانة" },
+  security: { en: "Security", ar: "أمن" },
+};
+function staffRoleName(k) { return k && STAFF_ROLES[k] ? STAFF_ROLES[k][state.lang] || STAFF_ROLES[k].en : null; }
 
 /* ---------- roles ---------- */
 const ROLES = ["user", "coach", "staff", "owner", "admin"];
@@ -133,7 +149,7 @@ const SUB_SAMPLE = [
 const TEAM_SAMPLE = [
   { name: "Hadi Mansour", role: "coach", phone: "+962795550001", age: 33, gender: "m", lastDays: 0, months: 8 },
   { name: "Nour Qasem", role: "coach", phone: "+962795550002", age: 27, gender: "f", lastDays: 1, months: 4 },
-  { name: "Zaid Hamdan", role: "staff", phone: "+962795550003", age: 24, gender: "m", lastDays: 0, months: 12 },
+  { name: "Zaid Hamdan", role: "staff", phone: "+962795550003", age: 24, gender: "m", lastDays: 0, months: 12, staffRole: "reception" },
 ];
 function subscribers() {
   const real = getUsers().filter(x => x.role === "user").map(x => ({ id: x.id, name: x.name, goal: x.goal, email: x.email, banned: !!x.banned, real: true, lastDays: 0 }));
@@ -164,7 +180,8 @@ function localCoachMembers(u) {
       const ws = (x.weights || []).slice().sort((a, b) => a.date - b.date);
       const allow = !x.privacy || x.privacy.trainerContact !== false;
       return {
-        id: x.id, name: x.name, role: x.role || "user", goal: x.goal || "fit", age: x.age || null, gender: x.gender || "na",
+        id: x.id, name: x.name, role: x.role || "user", goal: x.goal || "fit", staffRole: x.staffRole || null,
+        age: x.age || null, gender: x.gender || "na",
         email: allow ? x.email : null, phone: allow ? (x.phone || null) : null, gymId: x.gymId || null,
         points: x.points || 0, checkins: (x.checkinDates || []).length,
         startKg: ws.length ? ws[0].kg : null, currentKg: ws.length ? ws[ws.length - 1].kg : null,
@@ -230,6 +247,7 @@ function coachMemberHTML(m) {
   <div class="section">
     <h4>${t("memberDetails")}</h4>
     ${isMember ? kv(t("memberGoal"), goalLabel(m.goal)) : kv(t("accountType"), roleLabel(m.role))}
+    ${m.role === "staff" && !(me && me.role === "owner") ? kv(t("staffRoleLabel"), staffRoleName(m.staffRole) || t("noRoleYet")) : ""}
     ${kv(t("gender"), genderName(m.gender))}
     ${kv(t("phone"), m.phone)}
     ${kv(t("email"), m.email)}
@@ -239,6 +257,15 @@ function coachMemberHTML(m) {
     ${kv(t("memberSince"), m.joined ? fmtDate(m.joined) : null)}
     ${kv(t("startWeight"), m.startKg != null ? m.startKg + " kg" : null)}
   </div>
+  ${me && me.role === "owner" && m.role === "staff" ? `
+  <div class="section">
+    <h4>🪪 ${t("staffRoleLabel")}</h4>
+    <div class="h-sub">${t("assignRoleSub")}</div>
+    <select class="control" data-staffrole="${esc(String(m.id))}" style="width:100%">
+      <option value="">${t("noRoleYet")}</option>
+      ${Object.keys(STAFF_ROLES).map(k => `<option value="${k}"${m.staffRole === k ? " selected" : ""}>${staffRoleName(k)}</option>`).join("")}
+    </select>
+  </div>` : ""}
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn ghost sm" data-msg="${esc(String(m.id))}" data-msg-name="${esc(m.name)}">✉️ ${t("message")}</button>
     ${m.phone ? `<a class="btn ghost sm" href="tel:${m.phone}">📞 ${t("callBtn")}</a>
@@ -324,7 +351,7 @@ function secOwner(u) {
       ${shown.length ? shown.map(s => `
         <div class="portal-row" data-member="${esc(String(s.id))}" style="cursor:pointer">
           <div class="pr-l">${subAvatar(s)}<div><div class="pr-name">${esc(s.name)}${s.banned ? ` <span class="pill off">${t("banned")}</span>` : ""}</div>
-            <div class="pr-meta">${ownerTab === "user" ? `🎯 ${goalLabel(s.goal)}${s.age ? " · " + s.age : ""}` : `${s.age ? s.age + " · " : ""}${t("lastSeen")}: ${agoLabel(s.lastDays || 0)}`}</div></div></div>
+            <div class="pr-meta">${ownerTab === "user" ? `🎯 ${goalLabel(s.goal)}${s.age ? " · " + s.age : ""}` : `${ownerTab === "staff" ? (staffRoleName(s.staffRole) || t("noRoleYet")) + " · " : ""}${s.age ? s.age + " · " : ""}${t("lastSeen")}: ${agoLabel(s.lastDays || 0)}`}</div></div></div>
           <div class="pr-r">
             ${ownerTab === "user" ? `
               <button class="btn ghost sm" data-alert="${esc(String(s.id))}">🔔</button>
@@ -420,6 +447,7 @@ function secStaff(u) {
   return `
   <h3>🪪 ${t("staffDash")}</h3>
   <div class="h-sub">${t("staffSub")}</div>
+  <div class="note" style="margin-bottom:12px">🪪 ${t("staffRoleLabel")}: <b>${staffRoleName(u.staffRole) || t("noRoleYet")}</b> · ${ownerGym(u).name[state.lang]}</div>
   <div class="stat-row">
     <div class="stat"><div class="n">${18 + (new Date().getHours())}</div><div class="l">${t("checkinsToday")}</div></div>
   </div>
@@ -474,7 +502,27 @@ function secAdmin(u) {
   </div>`;
 }
 
+/* owner picked a job role for a staff member */
+async function assignStaffRole(id, staffRole) {
+  const person = (coachMembers || []).find(x => String(x.id) === String(id));
+  if (!person) return;
+  person.staffRole = staffRole;
+  const users = getUsers();
+  const i = users.findIndex(x => x.id === id || (person.email && x.email === person.email));
+  if (i >= 0) { users[i] = { ...users[i], staffRole }; saveUsers(users); }
+  if (person.real && person.email && window.GymoraCloud && GymoraCloud.hasSession()) {
+    const r = await GymoraCloud.setStaffRole(person.email, staffRole);
+    if (!r.ok && !r.offline) { toast((r.data && r.data.error) || t("keyFailed")); return; }
+  }
+  toast(t("roleUpdated"));
+}
+
 /* ---------- event hooks (called by auth.js) ---------- */
+function handlePortalChange(e) {
+  const sel = e.target.closest("[data-staffrole]");
+  if (sel) { void assignStaffRole(sel.dataset.staffrole, sel.value || null); return true; }
+  return false;
+}
 function handlePortalClick(e) {
   const hit = (s) => e.target.closest(s);
   const msg = hit("[data-msg]");
