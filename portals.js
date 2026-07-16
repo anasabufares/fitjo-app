@@ -32,6 +32,11 @@ const PORTAL_I18N = {
     validateKey: "Validate membership key", keyPlaceholder: "e.g. FJ-4821-KD", validate: "Validate",
     keyValid: "✅ Valid — active membership", keyInvalid: "❌ Not found or expired", checkinsToday: "Check-ins today",
     checkinMember: "Check a member in", memberEmail: "Member email", checkin: "Check in", checkedIn: "Checked in ✓",
+    teamKeys: "Team access keys", teamKeysSub: "Generate a one-time key for a new coach or staff member at your gym. They use it once to create their account — keys are AES-128 secured. Gym owner keys come only from GYMORA.",
+    keyType: "Key type", generateKey: "Generate key", newKeyIs: "New key — copy it and send it once:",
+    keyCopied: "Key copied ✓", noKeysYet: "No keys yet. Generate one for your first coach or staff member.",
+    keyFailed: "Could not create the key — try again.",
+    statusAvailable: "Available", statusUsed: "Used by", statusRevoked: "Revoked", revokeKey: "Revoke",
     adminSub: "Manage the whole platform.",
     broadcast: "Broadcast to all users", broadcastSend: "Send to everyone", broadcastSent: "Broadcast sent to",
     banUser: "Suspend a user", giveaway: "Run a giveaway", giveawayRun: "Pick a winner", winner: "🎉 Winner:",
@@ -58,6 +63,11 @@ const PORTAL_I18N = {
     validateKey: "تحقّق من مفتاح العضوية", keyPlaceholder: "مثال FJ-4821-KD", validate: "تحقّق",
     keyValid: "✅ صالح — عضوية فعّالة", keyInvalid: "❌ غير موجود أو منتهٍ", checkinsToday: "حضور اليوم",
     checkinMember: "تسجيل حضور عضو", memberEmail: "بريد العضو", checkin: "تسجيل حضور", checkedIn: "تم التسجيل ✓",
+    teamKeys: "مفاتيح وصول الفريق", teamKeysSub: "أنشئ مفتاحاً لمرة واحدة لمدرّب أو موظّف جديد في ناديك. يستخدمه مرة واحدة لإنشاء حسابه — المفاتيح مؤمَّنة بتشفير AES-128. مفاتيح أصحاب الأندية تصدر من GYMORA فقط.",
+    keyType: "نوع المفتاح", generateKey: "إنشاء مفتاح", newKeyIs: "مفتاح جديد — انسخه وأرسله مرة واحدة:",
+    keyCopied: "تم نسخ المفتاح ✓", noKeysYet: "لا مفاتيح بعد. أنشئ واحداً لأول مدرّب أو موظّف.",
+    keyFailed: "تعذّر إنشاء المفتاح — حاول مجدداً.",
+    statusAvailable: "متاح", statusUsed: "استُخدم بواسطة", statusRevoked: "ملغي", revokeKey: "إلغاء",
     adminSub: "إدارة المنصّة بالكامل.",
     broadcast: "بثّ لكل المستخدمين", broadcastSend: "إرسال للجميع", broadcastSent: "أُرسل البثّ إلى",
     banUser: "إيقاف مستخدم", giveaway: "سحب جائزة", giveawayRun: "اختر فائزاً", winner: "🎉 الفائز:",
@@ -160,6 +170,7 @@ function secOwner(u) {
   const head = Math.round(occ.pct / 100 * GYM_CAPACITY);
   const subs = subscribers();
   const revenue = subs.length * monthlyJOD(gym);
+  setTimeout(loadOwnerKeys, 0); // populate the keys list once the section is in the DOM
   return `
   <h3>🏢 ${t("ownerDash")}</h3>
   <div class="h-sub">${gym.name[state.lang]} · ${t("ownerSub")}</div>
@@ -188,7 +199,84 @@ function secOwner(u) {
           </div>
         </div>`).join("")}
     </div>
+  </div>
+  <div class="section">
+    <h4>🔑 ${t("teamKeys")}</h4>
+    <div class="h-sub">${t("teamKeysSub")}</div>
+    <div class="form-two" style="align-items:end">
+      <div class="form-row" style="margin:0"><label>${t("keyType")}</label>
+        <select id="ownerKeyRole">
+          <option value="coach">🧑‍🏫 ${t("roleCoach")}</option>
+          <option value="staff">🪪 ${t("roleStaff")}</option>
+        </select></div>
+      <button class="btn" id="ownerKeyGen">${t("generateKey")}</button>
+    </div>
+    <div class="note" id="ownerKeyMsg" style="margin-top:10px;word-break:break-all">&nbsp;</div>
+    <div class="portal-list" id="ownerKeyList"></div>
   </div>`;
+}
+
+/* ---- owner access keys: cloud when signed in, this browser otherwise ---- */
+function keyRowHTML(k) {
+  const status = k.revoked ? `<span class="pill off">${t("statusRevoked")}</span>`
+    : k.usedBy ? `<span class="pill off">${t("statusUsed")} ${esc(k.usedBy)}</span>`
+    : `<span class="pill on">${t("statusAvailable")}</span>`;
+  const actions = (!k.usedBy && !k.revoked)
+    ? `<button class="btn ghost sm" data-copykey="${esc(k.key)}" title="${t("keyCopied")}">📋</button>
+       <button class="btn ghost sm" data-revokekey="${esc(k.key)}" style="color:#ef4444">${t("revokeKey")}</button>`
+    : "";
+  return `
+    <div class="portal-row">
+      <div class="pr-l" style="min-width:0"><div style="min-width:0">
+        <div class="pr-name" style="font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px;word-break:break-all;white-space:normal">${esc(k.key)}</div>
+        <div class="pr-meta">${roleIcon(k.role)} ${roleLabel(k.role)} · ${new Date(k.createdAt).toLocaleDateString(state.lang === "ar" ? "ar-JO" : "en-US")}</div>
+      </div></div>
+      <div class="pr-r">${status}${actions}</div>
+    </div>`;
+}
+async function loadOwnerKeys() {
+  const u = currentUser();
+  const el = document.getElementById("ownerKeyList");
+  if (!u || u.role !== "owner" || !el) return;
+  let keys = null;
+  if (window.GymoraCloud && GymoraCloud.hasSession()) {
+    const r = await GymoraCloud.listKeys();
+    if (r.ok && r.data) keys = r.data.keys || [];
+  }
+  if (!keys) keys = window.GymoraKeys ? await GymoraKeys.list(k => k.issuedBy === u.email) : [];
+  const box = document.getElementById("ownerKeyList"); // re-query: the section may have re-rendered
+  if (box) box.innerHTML = keys.length ? keys.map(keyRowHTML).join("") : `<div class="note">${t("noKeysYet")}</div>`;
+}
+async function ownerGenerateKey() {
+  const u = currentUser(); if (!u || u.role !== "owner") return;
+  const role = val("ownerKeyRole") === "staff" ? "staff" : "coach";
+  const msg = document.getElementById("ownerKeyMsg");
+  let rec = null;
+  if (window.GymoraCloud && GymoraCloud.hasSession()) {
+    const r = await GymoraCloud.createKey(role, u.gymId || null);
+    if (r.ok && r.data) rec = r.data.record;
+    else if (!r.offline) { if (msg) msg.textContent = (r.data && r.data.error) || t("keyFailed"); return; }
+  }
+  if (!rec && window.GymoraKeys) rec = await GymoraKeys.create(role, u.gymId || null, u.email);
+  if (!rec) { if (msg) msg.textContent = t("keyFailed"); return; }
+  if (msg) msg.innerHTML = `${t("newKeyIs")} <b style="font-family:ui-monospace,Consolas,monospace">${esc(rec.key)}</b>`;
+  copyKeyText(rec.key);
+  loadOwnerKeys();
+}
+async function ownerRevokeKey(key) {
+  if (window.GymoraCloud && GymoraCloud.hasSession()) {
+    const r = await GymoraCloud.revokeKey(key);
+    if (r.ok) { toast(t("statusRevoked")); return loadOwnerKeys(); }
+    if (!r.offline) { toast(t("keyFailed")); return; }
+  }
+  if (window.GymoraKeys) await GymoraKeys.revoke(key);
+  toast(t("statusRevoked"));
+  loadOwnerKeys();
+}
+function copyKeyText(key) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(key).then(() => toast(t("keyCopied"))).catch(() => {});
+  }
 }
 
 /* ---------- staff dashboard ---------- */
@@ -265,6 +353,9 @@ function handlePortalClick(e) {
     return true;
   }
   if (hit("[data-ban-demo]")) { toast(`${t("demoOnly")} — ${t("bannedOk")}`); return true; }
+  if (hit("#ownerKeyGen")) { void ownerGenerateKey(); return true; }
+  const ck = hit("[data-copykey]"); if (ck) { copyKeyText(ck.dataset.copykey); return true; }
+  const rk = hit("[data-revokekey]"); if (rk) { void ownerRevokeKey(rk.dataset.revokekey); return true; }
   if (hit("#staffValidate")) {
     const k = (val("staffKey") || "").trim().toUpperCase();
     const el = document.getElementById("staffKeyResult");

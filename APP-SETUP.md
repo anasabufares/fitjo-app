@@ -27,7 +27,10 @@ The backend works out of the box, but for real security set a secret key:
 
 1. Netlify → your site → **Site configuration → Environment variables**
 2. Add: key `JWT_SECRET`, value = any long random text (40+ characters)
-3. Redeploy (or just wait for the next GitHub update)
+3. Optional: add `ACCESS_KEY_SECRET` (any long random text) — the AES-128
+   encryption secret for staff access keys. If you skip it, a key derived
+   from `JWT_SECRET` is used automatically.
+4. Redeploy (or just wait for the next GitHub update)
 
 ### Try the backend
 
@@ -84,10 +87,25 @@ App Store requires an Apple Developer account ($99/year).
 | Method | Path           | Body / Header                          | Returns              |
 |--------|----------------|----------------------------------------|----------------------|
 | GET    | `/api/health`  | —                                      | `{ ok: true }`       |
-| POST   | `/api/signup`  | `{ email, password, profile }`         | `{ token, profile }` |
+| POST   | `/api/signup`  | `{ email, password, profile, accessKey? }` | `{ token, profile }` |
 | POST   | `/api/login`   | `{ email, password }`                  | `{ token, profile }` |
 | GET    | `/api/profile` | `Authorization: Bearer <token>`        | `{ profile }`        |
 | PUT    | `/api/profile` | Bearer token + `{ profile }`           | `{ ok: true }`       |
+| POST   | `/api/keys`    | Bearer token + `{ role, gymId }`       | `{ record }`         |
+| GET    | `/api/keys`    | Bearer token                           | `{ keys }`           |
+| PUT    | `/api/keys`    | Bearer token + `{ key }` (revoke)      | `{ ok: true }`       |
+| DELETE | `/api/keys`    | Bearer token + `{ key }`               | `{ ok: true }`       |
 
 Passwords are hashed with scrypt and never stored or returned in plain text.
 Tokens last 30 days.
+
+### Access keys (AES-128)
+
+Coach, gym staff, and gym owner accounts can only be created with a
+one-time access key. **Gym owner keys** are generated only in the admin
+console (`/admin`); **coach & staff keys** can be generated there or by a
+gym owner from their in-app dashboard (locked to their own gym). Each key
+is a 128-bit code, stored AES-128-GCM encrypted in Netlify Blobs, and the
+signup form asks the new person for their name, phone number, email,
+password, and the key. The key decides the account's role and gym, and is
+consumed on first use.

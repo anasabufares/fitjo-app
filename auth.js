@@ -24,7 +24,14 @@ Object.assign(I18N.en, { changePhoto: "Change photo", removePhoto: "Remove", lb:
   faceIdNone: "No Face ID on this account yet — sign in with your password once, then turn it on in Security.",
   faceIdNeedEmail: "Type your email first so we know whose face to check.",
   faceIdFail: "Face ID didn't work — use your password instead.",
-  memberOnlyView: "Sign in to view gym details and compare gyms." });
+  memberOnlyView: "Sign in to view gym details and compare gyms.",
+  phone: "Phone number", phoneMissing: "Enter your phone number.",
+  accessKey: "Access key",
+  accessKeyHint: "Coach, gym staff and gym owner accounts need a one-time access key (AES-128 secured). Coaches and staff get theirs from their gym owner or GYMORA; gym owners get theirs from GYMORA.",
+  accessKeyMissing: "Enter the access key you were given.",
+  accessKeyBad: "That access key isn't valid for this account type — it may be used, revoked, or mistyped.",
+  keyGymNote: "Your gym is set automatically by your access key.",
+  signinKeyHint: "First time here? Create your account below with the access key you were given." });
 Object.assign(I18N.ar, { changePhoto: "تغيير الصورة", removePhoto: "إزالة", lb: "رطل",
   adminCodeLabel: "رمز وصول المشرف",
   roleMismatch: "هذا الحساب مسجّل كـ {role}. اختر هذا النوع لتسجيل الدخول.",
@@ -35,7 +42,14 @@ Object.assign(I18N.ar, { changePhoto: "تغيير الصورة", removePhoto: "�
   faceIdNone: "لا توجد بصمة وجه لهذا الحساب — سجّل بكلمة المرور مرة ثم فعّلها من الأمان.",
   faceIdNeedEmail: "اكتب بريدك أولاً لنعرف وجه من نتحقق.",
   faceIdFail: "لم تنجح بصمة الوجه — استخدم كلمة المرور.",
-  memberOnlyView: "سجّل الدخول لعرض تفاصيل الأندية والمقارنة." });
+  memberOnlyView: "سجّل الدخول لعرض تفاصيل الأندية والمقارنة.",
+  phone: "رقم الهاتف", phoneMissing: "أدخل رقم هاتفك.",
+  accessKey: "مفتاح الوصول",
+  accessKeyHint: "حسابات المدرّب وموظّف النادي وصاحب النادي تتطلب مفتاح وصول لمرة واحدة (مؤمَّن بتشفير AES-128). يحصل المدرّبون والموظفون على مفاتيحهم من صاحب النادي أو من GYMORA؛ ويحصل أصحاب الأندية على مفاتيحهم من GYMORA.",
+  accessKeyMissing: "أدخل مفتاح الوصول الذي استلمته.",
+  accessKeyBad: "مفتاح الوصول غير صالح لهذا النوع من الحسابات — قد يكون مستخدَماً أو ملغياً أو مكتوباً بشكل خاطئ.",
+  keyGymNote: "يُحدَّد ناديك تلقائياً من مفتاح الوصول.",
+  signinKeyHint: "أول مرة هنا؟ أنشئ حسابك أدناه باستخدام مفتاح الوصول الذي استلمته." });
 
 /* ---------- biometric (Face ID / fingerprint) ----------
    Uses the real device prompt (WebAuthn platform authenticator) when the
@@ -148,7 +162,7 @@ function createUser(data, provider = "email") {
   const users = getUsers();
   const u = {
     id: "u" + Date.now(), name: data.name, email: data.email, pw: obf(data.pw || Math.random().toString(36)),
-    age: data.age || 18, gender: "na", goal: "fit", city: "", createdAt: Date.now(),
+    age: data.age || 18, gender: "na", goal: "fit", city: "", phone: data.phone || "", createdAt: Date.now(),
     role: data.role || "user", gymId: data.gymId || null, verified: !!data.verified, banned: false,
     twoFA: false, twoFASecret: null, recovery: [], passkeys: 0, provider,
     privacy: { profilePublic: true, showFav: false, trainerContact: true, shareData: true },
@@ -210,7 +224,8 @@ function signinHTML() {
   <div class="auth-sub">GYMORA · ${t("brandTag")}</div>
   <div class="form-err" id="authErr"></div>
   <div class="form-row"><label>${t("signInAs")}</label>
-    <select id="inRoleSignin">${["user", "coach", "staff", "owner"].map(r => `<option value="${r}">${roleIcon(r)} ${roleLabel(r)}</option>`).join("")}</select></div>
+    <select id="inRoleSignin">${["user", "coach", "staff", "owner"].map(r => `<option value="${r}">${roleIcon(r)} ${roleLabel(r)}</option>`).join("")}</select>
+    <div id="signinKeyHint" style="display:none;font-size:12px;color:var(--muted);margin-top:6px">🔑 ${t("signinKeyHint")}</div></div>
   <button class="google-btn" id="googleBtn">${googleG()} ${t("continueGoogle")}</button>
   <button class="google-btn faceid-btn" id="faceIdBtn"><span class="faceid-ico">🙂</span> ${t("faceIdBtn")}</button>
   <div class="divider">${t("orEmail")}</div>
@@ -241,9 +256,14 @@ function signupHTML() {
   <div class="form-two">
     <div class="form-row"><label>${t("accountType")}</label>
       <select id="inRole">${["user", "coach", "staff", "owner"].map(r => `<option value="${r}">${roleIcon(r)} ${roleLabel(r)}</option>`).join("")}</select></div>
-    <div class="form-row"><label>${t("yourGym")}</label>
+    <div class="form-row" id="gymRow"><label>${t("yourGym")}</label>
       <select id="inGym">${GYMS.map(g => `<option value="${g.id}">${g.name[state.lang]}</option>`).join("")}</select></div>
   </div>
+  <div class="form-row" id="phoneRow" style="display:none"><label>${t("phone")}</label>
+    <input id="inPhone" type="tel" autocomplete="tel" placeholder="+9627XXXXXXXX"></div>
+  <div class="form-row" id="accessKeyRow" style="display:none"><label>${t("accessKey")}</label>
+    <input id="inAccessKey" type="text" autocomplete="off" spellcheck="false" placeholder="CH-XXXXXX-XXXXX-XXXXX-XXXXX-XXXXX" style="text-transform:uppercase">
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">${t("accessKeyHint")} ${t("keyGymNote")}</div></div>
   <label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:4px 0 12px">
     <input type="checkbox" id="agreeAge"> ${t("agreeAge")}</label>
   <button class="btn block" id="doSignUp">${t("signUp")}</button>
@@ -587,18 +607,46 @@ async function handleSignIn() {
   if (!u.verified) return startVerify();
   afterAuth();
 }
-function handleSignUp() {
+async function handleSignUp() {
   const name = val("inName").trim(), email = val("inEmail").trim().toLowerCase();
   const ageStr = val("inAge"), age = parseInt(ageStr, 10), pw = val("inPassword"), cf = val("inConfirm");
   const agree = document.getElementById("agreeAge").checked;
   const role = val("inRole") || "user", gymId = val("inGym") || null;
+  const needsKey = role === "coach" || role === "staff" || role === "owner";
+  const phone = val("inPhone").trim();
+  const accessKey = window.GymoraKeys ? GymoraKeys.normalize(val("inAccessKey")) : val("inAccessKey").trim().toUpperCase();
   if (!name || !email || !ageStr || !pw) return showErr(t("fillAll"));
   if (!validEmail(email)) return showErr(t("emailInvalid"));
   if (!(age >= 12 && age <= 100)) return showErr(t("ageInvalid"));
   if (!agree) return showErr(t("ageInvalid"));
   if (pw.length < 6) return showErr(t("pwShort"));
   if (pw !== cf) return showErr(t("pwMismatch"));
+  if (needsKey && !phone) return showErr(t("phoneMissing"));
+  if (needsKey && !accessKey) return showErr(t("accessKeyMissing"));
   if (getUsers().some(x => x.email === email)) return showErr(t("emailTaken"));
+
+  if (needsKey) {
+    /* The access key decides the role and gym. The backend is the
+       real validator (keys are usually generated on another device);
+       this browser's AES store is the offline/prototype fallback. */
+    let grantedRole = null, grantedGym = null, offline = false;
+    if (window.GymoraCloud) {
+      const r = await GymoraCloud.signupWithKey(email, pw, { name, email, age, phone, role, gymId, verified: false, banned: false }, accessKey);
+      if (r.ok) { grantedRole = (r.profile && r.profile.role) || role; grantedGym = (r.profile && r.profile.gymId) || gymId; }
+      else if (r.offline) offline = true;
+      else return showErr(r.error || t("accessKeyBad"));
+    } else offline = true;
+    if (offline) {
+      const rec = window.GymoraKeys ? await GymoraKeys.consume(accessKey, role, email) : null;
+      if (!rec) return showErr(t("accessKeyBad"));
+      grantedRole = rec.role; grantedGym = rec.gymId || gymId;
+    }
+    const nu = createUser({ name, email, age, pw, phone, role: grantedRole, gymId: grantedGym });
+    setSession(email);
+    if (window.GymoraCloud) GymoraCloud.pushSoon(nu); // background: sync the full profile
+    return startVerify();
+  }
+
   const nu = createUser({ name, email, age, pw, role, gymId }); setSession(email);
   if (window.GymoraCloud) GymoraCloud.signup(email, pw, nu); // background: create the cloud account
   startVerify();
@@ -718,6 +766,17 @@ function onAuthClick(e) {
   const pl = hit("[data-pref-lang]"); if (pl) return setPref("lang", pl.dataset.prefLang);
 }
 function onAuthChange(e) {
+  if (e.target.id === "inRole") {
+    const needsKey = ["coach", "staff", "owner"].includes(e.target.value);
+    const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? "" : "none"; };
+    show("phoneRow", needsKey); show("accessKeyRow", needsKey); show("gymRow", !needsKey);
+    return;
+  }
+  if (e.target.id === "inRoleSignin") {
+    const el = document.getElementById("signinKeyHint");
+    if (el) el.style.display = ["coach", "staff", "owner"].includes(e.target.value) ? "" : "none";
+    return;
+  }
   if (typeof handlePlanChange === "function" && handlePlanChange(e)) return;
   if (typeof handleFoodChange === "function" && handleFoodChange(e)) return;
   if (typeof handleEngageChange === "function" && handleEngageChange(e)) return;
@@ -758,6 +817,6 @@ document.addEventListener("DOMContentLoaded", () => {
   } else {
     openAuth("signin");
     const sel = document.getElementById("inRoleSignin");
-    if (sel) sel.value = seg;
+    if (sel) { sel.value = seg; sel.dispatchEvent(new Event("change", { bubbles: true })); }
   }
 });
