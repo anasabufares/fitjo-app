@@ -246,12 +246,15 @@ function obWelcomeHTML() {
 function obDoneHTML() {
   const g = obData.gender;
   const sub = g === "f" ? t("obDoneSubF") : g === "m" ? t("obDoneSubM") : t("obDoneSubNA");
+  const u = currentUser();
+  const offerTrial = typeof premiumActive === "function" && u && !premiumActive(u) && !u.trialUsed;
   return `
   <div class="ob-card ob-center">
     <div style="font-size:64px;text-align:center">${g === "f" ? "🏋️‍♀️" : "🏋️"}</div>
     <h2 class="ob-q" style="text-align:center">${t("obDoneTitle")}</h2>
     <div class="ob-sub" style="text-align:center">${sub}</div>
-    <button class="btn block" id="obSeePlan">${t("obSeePlan")}</button>
+    <button class="btn block" id="${offerTrial ? "obTrialPlan" : "obSeePlan"}">${offerTrial ? t("pmSeePlanTrial") : t("obSeePlan")}</button>
+    ${offerTrial ? `<div class="note" style="text-align:center">${t("pmTrialNote")}</div>` : ""}
     <button class="auth-link block-center" id="obLater">${t("obLater")}</button>
   </div>`;
 }
@@ -343,6 +346,12 @@ function obClick(e) {
   if (hit("#obGenderNA")) { obData.gender = "na"; return obNext(); }
   const opt = hit("[data-obopt]");
   if (opt) { obData[obStep] = opt.dataset.obopt; return obNext(); }
+  if (hit("#obTrialPlan")) {
+    premiumStartTrial();
+    closeOnboarding(true);
+    if (typeof openAuth === "function") { openAuth("account"); switchSection("plan"); }
+    return;
+  }
   if (hit("#obSeePlan")) {
     closeOnboarding(true);
     toast(t("planReady"));

@@ -4,7 +4,7 @@
 # matches the site's expected deploy directory on Netlify.
 
 [build]
-  command = "rm -rf public && mkdir public && cp index.html admin.html styles.css manifest.json app.js auth.js cloud.js keys.js data.js engage.js nutrition.js onboarding.js plan.js portals.js rank.js shop.js workouts.js icon-180.png icon-192.png icon-512.png logo.png logo-mark.png public/ && cp -r fonts public/fonts"
+  command = "rm -rf public && mkdir public && cp index.html admin.html styles.css manifest.json app.js auth.js cloud.js keys.js data.js engage.js nutrition.js onboarding.js premium.js plan.js portals.js rank.js shop.js workouts.js icon-180.png icon-192.png icon-512.png logo.png logo-mark.png public/ && cp -r fonts public/fonts"
   publish = "public"
 
 [functions]

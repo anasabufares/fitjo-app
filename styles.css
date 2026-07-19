@@ -1120,3 +1120,36 @@ h1, .hero h1, .acct-body h3 { letter-spacing: -.02em; font-weight: 900; }
 }
 .auth-link.block-center { display: block; margin: 12px auto 0; text-align: center; }
 .ob-center .ob-opt { text-align: center; }
+
+/* ---------- Premium paywall ---------- */
+.pm-lock { font-size: 44px; text-align: center; margin-top: 4px; }
+.pm-feats { margin: 14px 0; display: grid; gap: 8px; }
+.pm-feat { display: flex; gap: 8px; font-size: 13px; align-items: flex-start; }
+.pm-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 4px; }
+.pm-card {
+  position: relative; padding: 18px 10px 14px; border-radius: 16px;
+  border: 2px solid var(--border); background: var(--surface-2); color: var(--text);
+  text-align: center; cursor: pointer; transition: border-color .15s, transform .12s;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.pm-card:hover { border-color: var(--accent); }
+.pm-card:active { transform: scale(.97); }
+.pm-card.popular { border-color: var(--accent); }
+.pm-card.best { border-color: #f59e0b; }
+.pm-badge {
+  position: absolute; top: -10px; inset-inline: 0; margin: 0 auto; width: max-content;
+  font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 999px;
+  background: var(--accent); color: #fff; text-transform: uppercase; letter-spacing: .03em;
+}
+.pm-card.best .pm-badge { background: #f59e0b; }
+.pm-name { font-weight: 800; font-size: 13px; }
+.pm-price { font-weight: 900; font-size: 19px; }
+.pm-per { font-size: 11px; color: var(--muted); }
+.pm-go { margin-top: 6px; pointer-events: none; }
+.pm-chip {
+  display: block; width: max-content; max-width: 100%; margin-bottom: 12px;
+  font-size: 12px; font-weight: 800; padding: 6px 12px; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface-2));
+  border: 1px solid var(--accent); color: var(--text);
+}
+@media (max-width: 560px) { .pm-cards { grid-template-columns: 1fr; } .pm-badge { inset-inline: auto 12px; } }

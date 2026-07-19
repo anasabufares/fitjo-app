@@ -191,6 +191,7 @@ function openAuth(view) {
   authView = view;
   if (view === "account") { acctSection = (typeof defaultSectionForRole === "function" ? defaultSectionForRole(currentUser()) : "menu"); secSub = "hub"; }
   if (typeof resetPlanEditing === "function") resetPlanEditing();
+  if (typeof resetPremium === "function") resetPremium();
   if (typeof resetNutrition === "function") resetNutrition();
   if (typeof resetPortals === "function") resetPortals(); // fresh member list each time
   document.getElementById("authBack").classList.add("open");
@@ -317,10 +318,10 @@ function sectionHTML(sec) {
   if (sec === "staff" && typeof secStaff === "function") return secStaff(u);
   if (sec === "admin" && typeof secAdmin === "function") return secAdmin(u);
   if (sec === "profile") return secProfile(u);
-  if (sec === "plan" && typeof secPlan === "function") return secPlan(u);
+  if (sec === "plan" && typeof secPlan === "function") return typeof gatePremium === "function" ? gatePremium(u, secPlan) : secPlan(u);
   if (sec === "nutrition" && typeof secNutrition === "function") return secNutrition(u);
   if (sec === "rank" && typeof secRank === "function") return secRank(u);
-  if (sec === "workouts" && typeof secWorkouts === "function") return secWorkouts(u);
+  if (sec === "workouts" && typeof secWorkouts === "function") return typeof gatePremium === "function" ? gatePremium(u, secWorkouts) : secWorkouts(u);
   if (sec === "supps" && typeof secSupps === "function") return secSupps(u);
   if (sec === "points" && typeof secPoints === "function") return secPoints(u);
   if (sec === "inbody" && typeof secInbody === "function") return secInbody(u);
@@ -731,6 +732,7 @@ function setPref(kind, value) {
 /* ---------- event routing ---------- */
 function onAuthClick(e) {
   const hit = (s) => e.target.closest(s);
+  if (typeof handlePremiumClick === "function" && handlePremiumClick(e)) return;
   if (typeof handlePlanClick === "function" && handlePlanClick(e)) return;
   if (typeof handleFoodClick === "function" && handleFoodClick(e)) return;
   if (typeof handlePortalClick === "function" && handlePortalClick(e)) return;
