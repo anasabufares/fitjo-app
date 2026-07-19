@@ -145,10 +145,10 @@ function libDetailHTML(x, i) {
     <div class="chips">${(x.m || []).map(m => `<span class="chip active">${musLabel(m)}</span>`).join("")}
     ${(x.sm || []).map(m => `<span class="chip">${musLabel(m)}</span>`).join("")}</div>
   </div>
-  <div class="section">
+  ${(x.ins && x.ins.length) ? `<div class="section">
     <h4>📋 ${t("libHow")}</h4>
-    <ol class="lib-steps">${(x.ins || []).map(s => `<li>${esc(s)}</li>`).join("")}</ol>
-  </div>
+    <ol class="lib-steps">${x.ins.map(s => `<li>${esc(s)}</li>`).join("")}</ol>
+  </div>` : ""}
   ${vid
     ? `<button class="btn block" data-video="${vid}" data-vtitle="${esc(x.n)}">▶ ${t("libWatch")}</button>`
     : `<a class="btn ghost block" style="text-align:center" href="https://www.youtube.com/results?search_query=${ytq}" target="_blank" rel="noopener">▶ ${t("libSearchYT")}</a>`}`;
