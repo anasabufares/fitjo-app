@@ -267,7 +267,7 @@ function planViewHTML(u) {
     ${uniqueWorkouts(week).map(key => `
       <div class="wk-block">
         <div class="wk-title">${WK[key].name[state.lang]}</div>
-        ${WK[key].ex.map(x => `<div class="ex-row"><span>${x.n[state.lang]}</span><span class="ex-sets">${x.s} × ${x.rep || rep}</span></div>`).join("")}
+        ${WK[key].ex.map(x => `<div class="ex-row"><span class="ex-name">${typeof exVidBtn === "function" ? exVidBtn(x.n.en, x.n[state.lang]) : ""}${x.n[state.lang]}</span><span class="ex-sets">${x.s} × ${x.rep || rep}</span></div>`).join("")}
       </div>`).join("")}
   </div>
 

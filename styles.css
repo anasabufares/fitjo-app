@@ -1153,3 +1153,27 @@ h1, .hero h1, .acct-body h3 { letter-spacing: -.02em; font-weight: 900; }
   border: 1px solid var(--accent); color: var(--text);
 }
 @media (max-width: 560px) { .pm-cards { grid-template-columns: 1fr; } .pm-badge { inset-inline: auto 12px; } }
+
+/* ---------- Exercise form-guide videos ---------- */
+.vid-btn {
+  display: inline-grid; place-items: center; vertical-align: middle;
+  width: 22px; height: 22px; border-radius: 50%; border: none;
+  background: var(--accent); color: #fff; font-size: 9px; padding-inline-start: 2px;
+  cursor: pointer; margin-inline-end: 6px; transition: transform .12s, filter .15s;
+}
+.vid-btn:hover { filter: brightness(1.1); transform: scale(1.1); }
+.ex-name { display: inline-flex; align-items: center; }
+.vid-back {
+  position: fixed; inset: 0; z-index: 85; background: rgba(2,6,23,.75);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.vid-back.open { display: flex; }
+.vid-modal {
+  position: relative; width: 100%; max-width: 720px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 18px; padding: 20px; box-shadow: var(--shadow);
+  animation: obIn .25s ease both;
+}
+.vid-title { font-weight: 800; font-size: 15px; margin-bottom: 12px; padding-inline-end: 40px; }
+.vid-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #000; }
+.vid-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; }

@@ -182,7 +182,7 @@ function secRank(u) {
     const L = log[k], r = rankScore(k, L.e1rm / bw, u.gender);
     return `<div class="portal-row">
       <div class="pr-l"><span class="fr-emo">${EXERCISES[k].emoji}</span>
-        <div><div class="pr-name">${exName(k)} <span class="rl-badge" style="background:${RANK_TIERS[r.tier].color}">${tierName(r.tier)}</span></div>
+        <div><div class="pr-name">${exName(k)} ${typeof exVidBtn === "function" ? exVidBtn(I18N.en["ex_" + k], exName(k)) : ""} <span class="rl-badge" style="background:${RANK_TIERS[r.tier].color}">${tierName(r.tier)}</span></div>
         <div class="pr-meta">${L.kg} kg × ${L.reps} → ${L.e1rm} kg · ${toLb(L.e1rm)} lb ${t("e1rmLabel")}</div></div></div>
       <div class="pr-r"><button class="auth-link fr-del" data-dellift="${k}">✕</button></div>
     </div>`;

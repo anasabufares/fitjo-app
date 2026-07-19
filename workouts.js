@@ -54,11 +54,11 @@ function wtSuggestion(u) {
     if (u.intake && typeof buildWeek === "function") {
       const day = buildWeek(u)[jordanDayIndex(new Date())];
       if (day.rest) return { rest: true };
-      return { name: WK[day.workout].name[state.lang], ex: WK[day.workout].ex.map(x => x.n[state.lang]) };
+      return { name: WK[day.workout].name[state.lang], ex: WK[day.workout].ex.map(x => ({ en: x.n.en, label: x.n[state.lang] })) };
     }
     if (typeof splitFor === "function" && typeof WK !== "undefined") {
       const key = splitFor(u.goal || "fit", 3, u.gender)[0];
-      return { name: WK[key].name[state.lang], ex: WK[key].ex.map(x => x.n[state.lang]) };
+      return { name: WK[key].name[state.lang], ex: WK[key].ex.map(x => ({ en: x.n.en, label: x.n[state.lang] })) };
     }
   } catch (e) { /* plan module absent */ }
   return null;
@@ -71,13 +71,16 @@ function secWorkouts(u) {
       <h4>💡 ${t("wtSuggested")}</h4>
       ${sugg.rest ? `<div class="note">${t("wtRest")}</div>` : `
       <div class="pr-meta" style="margin-bottom:6px">${esc(sugg.name)}</div>
-      <div class="chips">${sugg.ex.map(n => `<span class="chip">${esc(n)}</span>`).join("")}</div>`}
+      <div class="chips">${sugg.ex.map(x => {
+        const vid = typeof exVidId === "function" ? exVidId(x.en) : null;
+        return vid ? `<button class="chip" data-video="${vid}" data-vtitle="${esc(x.label)}">🎬 ${esc(x.label)}</button>` : `<span class="chip">${esc(x.label)}</span>`;
+      }).join("")}</div>`}
     </div>` : "";
 
   const sessionBlocks = wSess.length ? wSess.map((it, i) => `
     <div class="wk-block">
       <div class="wk-title" style="display:flex;justify-content:space-between;align-items:center">
-        <span>${EXERCISES[it.key] ? EXERCISES[it.key].emoji : "🏋️"} ${exName(it.key)}</span>
+        <span>${EXERCISES[it.key] ? EXERCISES[it.key].emoji : "🏋️"} ${exName(it.key)} ${typeof exVidBtn === "function" ? exVidBtn(I18N.en["ex_" + it.key], exName(it.key)) : ""}</span>
         <button class="auth-link fr-del" data-delex="${i}">✕</button>
       </div>
       ${it.sets.map((s, j) => `
