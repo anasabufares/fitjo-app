@@ -95,9 +95,15 @@ export default async (req) => {
 
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/api/, "") || "/";
-  const users = getStore("gymora-users");
+  /* Accounts and one-time access keys need strongly consistent reads:
+     with the default eventual consistency, a just-created account is
+     invisible to the duplicate-email check (a second signup could
+     silently take over the account), and an access key could be
+     consumed twice. The public gym list stays eventual — it's read on
+     every app open and a propagation delay there is harmless. */
+  const users = getStore({ name: "gymora-users", consistency: "strong" });
   const gymsStore = getStore("gymora-gyms");
-  const keysStore = getStore("gymora-keys");
+  const keysStore = getStore({ name: "gymora-keys", consistency: "strong" });
 
   /* Resolve the requesting user ({ email, profile }), or null. */
   async function requester() {
