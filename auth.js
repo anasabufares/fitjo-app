@@ -695,8 +695,18 @@ async function startVerify() {
       if (authView === "verify") renderAuthView();
       return;
     }
+    if (!r.offline) {
+      // server reachable but declined to send a new code (e.g. 60s
+      // resend cooldown) — the previously emailed code is still valid,
+      // so stay in cloud mode rather than inventing a local code the
+      // server would reject.
+      cloudVerify = true;
+      pendingCode = null;
+      if (authView === "verify") renderAuthView();
+      return;
+    }
   }
-  pendingCode = genCode();
+  pendingCode = genCode(); // truly offline / no backend — on-screen demo code
   if (authView === "verify") renderAuthView();
 }
 function verifyHTML() {
