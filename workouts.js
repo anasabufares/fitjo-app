@@ -24,6 +24,7 @@ const WT_I18N = {
     wtNoHistory: "No workouts yet. Your finished sessions appear here.",
     wtVolume: "volume", wtSets: "sets", wtExercises: "exercises",
     wtRest: "Rest day on your plan — light session or recovery 😌",
+    wtFromLibrary: "Need more? Pick any of 873 exercises from the library",
   },
   ar: {
     workouts: "متتبّع التمارين",
@@ -40,6 +41,7 @@ const WT_I18N = {
     wtNoHistory: "لا تمارين بعد. تظهر جلساتك المنتهية هنا.",
     wtVolume: "الحجم", wtSets: "مجموعات", wtExercises: "تمارين",
     wtRest: "يوم راحة حسب خطتك — جلسة خفيفة أو تعافٍ 😌",
+    wtFromLibrary: "تريد المزيد؟ اختر أي تمرين من 873 تمريناً في المكتبة",
   },
 };
 Object.assign(I18N.en, WT_I18N.en);
@@ -80,7 +82,7 @@ function secWorkouts(u) {
   const sessionBlocks = wSess.length ? wSess.map((it, i) => `
     <div class="wk-block">
       <div class="wk-title" style="display:flex;justify-content:space-between;align-items:center">
-        <span>${EXERCISES[it.key] ? EXERCISES[it.key].emoji : "🏋️"} ${exName(it.key)} ${typeof exVidBtn === "function" ? exVidBtn(I18N.en["ex_" + it.key], exName(it.key)) : ""}</span>
+        <span>${it.name ? "🏋️ " + esc(it.name) : `${EXERCISES[it.key] ? EXERCISES[it.key].emoji : "🏋️"} ${exName(it.key)}`} ${typeof exVidBtn === "function" ? exVidBtn(it.name || I18N.en["ex_" + it.key], it.name || exName(it.key)) : ""}</span>
         <button class="auth-link fr-del" data-delex="${i}">✕</button>
       </div>
       ${it.sets.map((s, j) => `
@@ -112,6 +114,7 @@ function secWorkouts(u) {
       <select id="wEx">${Object.keys(EXERCISES).map(k => `<option value="${k}">${EXERCISES[k].emoji} ${exName(k)}</option>`).join("")}</select>
       <button class="btn ghost" id="wAddEx">＋ ${t("wtAddExercise")}</button>
     </div>
+    <button class="auth-link" id="wLibMore" style="margin-top:8px">📚 ${t("wtFromLibrary")}</button>
     ${wSess.length ? `<button class="btn block" id="wFinish" style="margin-top:12px">✅ ${t("wtFinish")}</button>` : ""}
   </div>
   <div class="section"><h4>📆 ${t("wtHistory")}</h4>${histRows}</div>`;
@@ -137,6 +140,7 @@ function wtFinish() {
 function handleWorkoutClick(e) {
   const hit = (s) => e.target.closest(s);
   if (hit("#wAddEx")) { wSess.push({ key: val("wEx"), sets: [] }); reRenderSection(); return true; }
+  if (hit("#wLibMore")) { closeAuth(); openFeature("library"); return true; }
   const as = hit("[data-addset]"); if (as) { wtAddSet(parseInt(as.dataset.addset, 10)); return true; }
   const ds = hit("[data-delset]");
   if (ds) {

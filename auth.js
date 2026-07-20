@@ -305,9 +305,13 @@ function switchSection(sec) {
   renderAuthView();
 }
 function reRenderSection() {
+  /* When the account drawer is open ON TOP of a feature page, the drawer
+     is what the user sees — refresh it, not the page behind it. */
+  const back = document.getElementById("authBack");
+  const el = document.getElementById("acctBody");
+  if (back && back.classList.contains("open") && el) { el.innerHTML = sectionHTML(acctSection); return; }
   const fb = document.getElementById("featureBody");
   if (fb && typeof featureSection !== "undefined" && featureSection) { fb.innerHTML = sectionHTML(featureSection); return; }
-  const el = document.getElementById("acctBody");
   if (el) el.innerHTML = sectionHTML(acctSection);
 }
 

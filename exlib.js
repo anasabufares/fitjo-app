@@ -21,6 +21,9 @@ const LIB_I18N = {
     libHow: "How to do it", libWatch: "Watch video guide", libSearchYT: "Find video on YouTube",
     libLoading: "Loading the exercise library…",
     libBack: "All exercises",
+    libAddWorkout: "Add to today's workout",
+    libAdded: "Added — it's in your Workout tracker 📋",
+    libNeedPremium: "The workout tracker is a Premium feature — start your free trial from My plan.",
     lvl_beginner: "Beginner", lvl_intermediate: "Intermediate", lvl_expert: "Expert",
     mus_quadriceps: "Quads", mus_shoulders: "Shoulders", mus_abdominals: "Abs", mus_chest: "Chest",
     mus_hamstrings: "Hamstrings", mus_triceps: "Triceps", mus_biceps: "Biceps", mus_lats: "Lats",
@@ -42,6 +45,9 @@ const LIB_I18N = {
     libHow: "طريقة الأداء", libWatch: "شاهد فيديو الشرح", libSearchYT: "ابحث عن فيديو على يوتيوب",
     libLoading: "نحمّل مكتبة التمارين…",
     libBack: "كل التمارين",
+    libAddWorkout: "أضِف إلى تمرين اليوم",
+    libAdded: "أُضيف — تجده في متتبّع التمارين 📋",
+    libNeedPremium: "متتبّع التمارين ميزة بريميوم — ابدأ تجربتك المجانية من خطتي.",
     lvl_beginner: "مبتدئ", lvl_intermediate: "متوسط", lvl_expert: "متقدم",
     mus_quadriceps: "فخذ أمامي", mus_shoulders: "أكتاف", mus_abdominals: "بطن", mus_chest: "صدر",
     mus_hamstrings: "فخذ خلفي", mus_triceps: "ترايسبس", mus_biceps: "بايسبس", mus_lats: "لاتس",
@@ -151,7 +157,8 @@ function libDetailHTML(x, i) {
   </div>` : ""}
   ${vid
     ? `<button class="btn block" data-video="${vid}" data-vtitle="${esc(x.n)}">▶ ${t("libWatch")}</button>`
-    : `<a class="btn ghost block" style="text-align:center" href="https://www.youtube.com/results?search_query=${ytq}" target="_blank" rel="noopener">▶ ${t("libSearchYT")}</a>`}`;
+    : `<a class="btn ghost block" style="text-align:center" href="https://www.youtube.com/results?search_query=${ytq}" target="_blank" rel="noopener">▶ ${t("libSearchYT")}</a>`}
+  <button class="btn ghost block" id="libAddWorkout" data-libadd="${i}" style="margin-top:8px">➕ ${t("libAddWorkout")}</button>`;
 }
 
 /* only refresh the results block while typing, so the search box keeps focus */
@@ -166,6 +173,14 @@ function handleLibClick(e) {
   const open = hit("[data-libopen]");
   if (open) { libDetail = parseInt(open.dataset.libopen, 10); reRenderSection(); return true; }
   if (hit("#libBack")) { libDetail = null; reRenderSection(); return true; }
+  const add = hit("[data-libadd]");
+  if (add) {
+    const u = currentUser();
+    if (!(typeof premiumActive === "function" && premiumActive(u))) { toast(t("libNeedPremium")); return true; }
+    const x = window.EXLIB[parseInt(add.dataset.libadd, 10)];
+    if (x && typeof wSess !== "undefined") { wSess.push({ name: x.n, sets: [] }); toast(t("libAdded")); }
+    return true;
+  }
   if (hit("#libMore")) { libShown += 30; libRefreshResults(); return true; }
   return false;
 }
