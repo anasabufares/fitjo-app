@@ -33,6 +33,11 @@ const PM_I18N = {
     pmStatusTrial: "Free trial", pmDaysLeft: "days left", pmDayLeft: "day left",
     pmRenew: "Renew",
     pmSeePlanTrial: "Start free trial & see my plan 🎁",
+    pmTab: "Subscription",
+    pmCurrentPlan: "Current plan", pmStarted: "Started", pmActiveUntil: "Active until",
+    pmTimeLeft: "Time left", pmChangePlan: "Change plan", pmCurrent: "Current",
+    pmTrialPick: "You're on the free trial — pick a plan to keep your plan & workouts after it ends.",
+    pmIncluded: "What's included",
   },
   ar: {
     pmTitle: "GYMORA بريميوم",
@@ -57,6 +62,11 @@ const PM_I18N = {
     pmStatusTrial: "تجربة مجانية", pmDaysLeft: "أيام متبقية", pmDayLeft: "يوم متبقٍ",
     pmRenew: "تجديد",
     pmSeePlanTrial: "ابدأ التجربة المجانية واعرض خطتي 🎁",
+    pmTab: "الاشتراك",
+    pmCurrentPlan: "الخطة الحالية", pmStarted: "بدأ في", pmActiveUntil: "فعال حتى",
+    pmTimeLeft: "الوقت المتبقي", pmChangePlan: "تغيير الخطة", pmCurrent: "الحالية",
+    pmTrialPick: "أنت في التجربة المجانية — اختر خطة للاحتفاظ بخطتك وتمارينك بعد انتهائها.",
+    pmIncluded: "ماذا يشمل الاشتراك",
   },
 };
 Object.assign(I18N.en, PM_I18N.en);
@@ -143,6 +153,50 @@ function pmConfirmHTML(u) {
   </div>
   <button class="btn block" id="pmConfirm">${t("pmActivate")}</button>
   <button class="btn ghost block" id="pmCancel" style="margin-top:8px">${t("cancel")}</button>
+  <div class="note">💳 ${t("pmDemoNote")}</div>`;
+}
+
+/* ---------- "Subscription" tab in the account menu ---------- */
+function secPremiumTab(u) {
+  if (!premiumActive(u)) return paywallHTML(u); // pricing + trial (and confirm step)
+  if (pmSelected) return pmConfirmHTML(u);
+  const s = u.sub, d = pmDaysLeft(u);
+  const total = Math.max(1, Math.ceil((s.until - s.since) / 86400000));
+  const pct = Math.max(3, Math.min(100, Math.round((d / total) * 100)));
+  const isTrial = s.plan === "trial";
+  const priceLine = isTrial ? t("pmStatusTrial") : `${pmLabel(s.plan)} · ${pmPrice(s.plan)} ${pmPer(s.plan)}`;
+  const cards = ["weekly", "monthly", "yearly"].map(key => {
+    const cur = s.plan === key;
+    return `
+    <button class="pm-card ${cur ? "popular" : ""}" ${cur ? "" : `data-pmplan="${key}"`}>
+      ${cur ? `<span class="pm-badge">${t("pmCurrent")}</span>` : key === "yearly" ? `<span class="pm-badge" style="background:#f59e0b">${t("pmBestValue")}</span>` : ""}
+      <div class="pm-name">${pmLabel(key)}</div>
+      <div class="pm-price">${pmPrice(key)}</div>
+      <div class="pm-per">${pmPer(key)}</div>
+      ${cur ? "" : `<div class="btn sm pm-go">${t("pmChoose")}</div>`}
+    </button>`;
+  }).join("");
+  return `
+  <h3>⭐ ${t("pmTitle")} <span class="pill on">${t("enabled")}</span></h3>
+  <div class="h-sub">${t("pmActive")}</div>
+  ${isTrial ? `<div class="note" style="margin-bottom:10px">🎁 ${t("pmTrialPick")}</div>` : ""}
+  <div class="section">
+    <div class="kv"><span>${t("pmCurrentPlan")}</span><span><b>${priceLine}</b></span></div>
+    <div class="kv"><span>${t("pmStarted")}</span><span>${fmtDate(s.since)}</span></div>
+    <div class="kv"><span>${t("pmActiveUntil")}</span><span>${fmtDate(s.until)}</span></div>
+    <div class="kv"><span>${t("pmTimeLeft")}</span><span><b>${d}</b> ${d === 1 ? t("pmDayLeft") : t("pmDaysLeft")}</span></div>
+    <div class="occ-bar" style="margin-top:8px"><span style="width:${pct}%;background:var(--accent)"></span></div>
+  </div>
+  <div class="section">
+    <h4>✅ ${t("pmIncluded")}</h4>
+    <div class="pm-feats">
+      ${[t("pmFeat1"), t("pmFeat2"), t("pmFeat3"), t("pmFeat4")].map(f => `<div class="pm-feat">✅ <span>${f}</span></div>`).join("")}
+    </div>
+  </div>
+  <div class="section">
+    <h4>🔄 ${t("pmChangePlan")}</h4>
+    <div class="pm-cards">${cards}</div>
+  </div>
   <div class="note">💳 ${t("pmDemoNote")}</div>`;
 }
 

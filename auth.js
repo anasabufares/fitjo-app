@@ -328,6 +328,7 @@ function sectionHTML(sec) {
   if (sec === "rank" && typeof secRank === "function") return secRank(u);
   if (sec === "workouts" && typeof secWorkouts === "function") return typeof gatePremium === "function" ? gatePremium(u, secWorkouts) : secWorkouts(u);
   if (sec === "library" && typeof secLibrary === "function") return secLibrary(u);
+  if (sec === "premium" && typeof secPremiumTab === "function") return secPremiumTab(u);
   if (sec === "supps" && typeof secSupps === "function") return secSupps(u);
   if (sec === "points" && typeof secPoints === "function") return secPoints(u);
   if (sec === "inbody" && typeof secInbody === "function") return secInbody(u);
