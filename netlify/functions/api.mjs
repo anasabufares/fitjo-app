@@ -408,6 +408,75 @@ export default async (req) => {
     return json(200, { ok: true, staffRole });
   }
 
+  /* ---- email verification ----
+     The server generates the code, stores only its hash (15-min expiry,
+     6 attempts, 60s resend cooldown) and emails it via Brevo when
+     BREVO_API_KEY + SENDER_EMAIL are configured. Without them the code
+     comes back in the response (demo mode) so the prototype still works. */
+  const codeHash = (email, code) => createHash("sha256").update(email + "|" + code + "|" + SECRET).digest("hex");
+  async function sendVerifyEmail(to, code) {
+    const key = process.env.BREVO_API_KEY, sender = process.env.SENDER_EMAIL;
+    if (!key || !sender) return false;
+    try {
+      const r = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: { "api-key": key, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender: { name: "GYMORA", email: sender },
+          to: [{ email: to }],
+          subject: `${code} — your GYMORA verification code`,
+          htmlContent: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px">
+            <h2 style="color:#22c55e;margin:0 0 4px">GYMORA</h2>
+            <p style="color:#555;margin:0 0 20px">Optimize. Recover. Achieve.</p>
+            <p>Your verification code / رمز التحقق الخاص بك:</p>
+            <p style="font-size:34px;font-weight:bold;letter-spacing:8px;margin:12px 0">${code}</p>
+            <p style="color:#888">The code expires in 15 minutes. If you didn't create a GYMORA account, ignore this email.<br>
+            تنتهي صلاحية الرمز خلال 15 دقيقة. إذا لم تنشئ حساباً في GYMORA فتجاهل هذه الرسالة.</p>
+          </div>`,
+        }),
+      });
+      return r.ok;
+    } catch { return false; }
+  }
+
+  if (req.method === "POST" && path === "/verify/send") {
+    const me = await requester();
+    if (!me) return json(401, { error: "Not signed in" });
+    const record = await users.get(me.email, { type: "json" });
+    if (!record) return json(404, { error: "Account not found" });
+    if (record.profile && record.profile.verified) return json(200, { ok: true, already: true });
+    const now = Date.now();
+    if (record.verify && record.verify.lastSend && now - record.verify.lastSend < 60000) {
+      return json(429, { error: "Please wait a minute before requesting a new code" });
+    }
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    record.verify = { hash: codeHash(me.email, code), exp: now + 15 * 60 * 1000, attempts: 0, lastSend: now };
+    await users.setJSON(me.email, record);
+    const sent = await sendVerifyEmail(me.email, code);
+    return json(200, sent ? { sent: true } : { sent: false, demoCode: code });
+  }
+
+  if (req.method === "POST" && path === "/verify/confirm") {
+    const me = await requester();
+    if (!me) return json(401, { error: "Not signed in" });
+    let body; try { body = await req.json(); } catch { return json(400, { error: "Invalid JSON" }); }
+    const code = String(body.code || "").trim();
+    const record = await users.get(me.email, { type: "json" });
+    if (!record) return json(404, { error: "Account not found" });
+    const v = record.verify;
+    if (!v || v.exp < Date.now()) return json(400, { error: "Code expired — request a new one" });
+    if (v.attempts >= 6) return json(429, { error: "Too many tries — request a new code" });
+    if (codeHash(me.email, code) !== v.hash) {
+      v.attempts = (v.attempts || 0) + 1;
+      await users.setJSON(me.email, record);
+      return json(400, { error: "Wrong code" });
+    }
+    delete record.verify;
+    record.profile = { ...(record.profile || {}), verified: true };
+    await users.setJSON(me.email, record);
+    return json(200, { ok: true });
+  }
+
   /* ---- profile (requires Bearer token) ---- */
   if (path === "/profile") {
     const auth = req.headers.get("authorization") || "";

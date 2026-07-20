@@ -35,6 +35,10 @@ const OB_I18N = {
     obQDiet: "Any diet preference?",
     obSkipStep: "Skip",
     obBuilding: "Building your plan…",
+    obVerifyTitle: "Check your email 📧",
+    obVerifySending: "Creating your account…",
+    obVerifyGo: "Verify",
+    obVerifyLater: "Verify later",
     obDoneTitle: "Your plan is ready 🎉",
     obDoneSubM: "A men's training split, meals, water and a weekly schedule — built just for you.",
     obDoneSubF: "A women's training split (glutes & lower-body focus), meals, water and a weekly schedule — built just for you.",
@@ -65,6 +69,10 @@ const OB_I18N = {
     obQDiet: "هل لديك نظام غذائي مفضّل؟",
     obSkipStep: "تخطي",
     obBuilding: "نبني خطتك…",
+    obVerifyTitle: "تحقق من بريدك 📧",
+    obVerifySending: "ننشئ حسابك…",
+    obVerifyGo: "تحقق",
+    obVerifyLater: "التحقق لاحقاً",
     obDoneTitle: "خطتك جاهزة 🎉",
     obDoneSubM: "برنامج تمارين للرجال، وجبات، ماء وجدول أسبوعي — مبني خصيصاً لك.",
     obDoneSubF: "برنامج تمارين للنساء (تركيز على المؤخرة والجزء السفلي)، وجبات، ماء وجدول أسبوعي — مبني خصيصاً لك.",
@@ -147,7 +155,9 @@ function obContainer() {
     document.body.appendChild(el);
     el.addEventListener("click", obClick);
     el.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && obStep !== "welcome" && obStep !== "done") { e.preventDefault(); obNext(); }
+      if (e.key !== "Enter") return;
+      if (obStep === "everify") { e.preventDefault(); obVerifyGo(); return; }
+      if (obStep !== "welcome" && obStep !== "done") { e.preventDefault(); obNext(); }
     });
   }
   return el;
@@ -180,6 +190,12 @@ function obRender() {
   const el = obContainer();
   if (obStep === "welcome") { el.innerHTML = obWelcomeHTML(); return; }
   if (obStep === "done") { el.innerHTML = obDoneHTML(); return; }
+  if (obStep === "everify") {
+    el.innerHTML = obVerifyHTML();
+    const inp = document.getElementById("obVIn");
+    if (inp) setTimeout(() => inp.focus(), 50);
+    return;
+  }
 
   const idx = obFlow.indexOf(obStep), total = obFlow.length;
   const pct = Math.round(((idx + 1) / total) * 100);
@@ -243,6 +259,37 @@ function obWelcomeHTML() {
   </div>`;
 }
 
+let obVerifyState = null; // { status: "sending" | "emailed" | "demo", code? }
+function obVerifyHTML() {
+  const st = obVerifyState || {};
+  const email = (currentUser() || {}).email || "";
+  if (st.status === "sending") {
+    return `<div class="ob-card ob-center">
+      <div class="lib-spin">⏳</div>
+      <div class="ob-sub" style="text-align:center">${t("obVerifySending")}</div>
+    </div>`;
+  }
+  const box = st.status === "demo"
+    ? `<div class="verify-demo">${t("verifyDemo")} <b>${st.code}</b></div>`
+    : `<div class="ob-sub" style="text-align:center">📧 ${t("verifySentTo")}<br><b>${esc(email)}</b></div>`;
+  return `
+  <div class="ob-card ob-center">
+    <h2 class="ob-q" style="text-align:center">${t("obVerifyTitle")}</h2>
+    ${box}
+    <div class="form-err" id="obErr"></div>
+    <div class="ob-inwrap"><input class="ob-input" id="obVIn" inputmode="numeric" maxlength="6" placeholder="123456"></div>
+    <button class="btn block" id="obVerifyGo">${t("obVerifyGo")}</button>
+    <button class="auth-link block-center" id="obVerifyResend">${t("verifyResend")}</button>
+    <button class="auth-link block-center" id="obVerifyLater">${t("obVerifyLater")}</button>
+  </div>`;
+}
+async function obVerifyGo() {
+  const code = (val("obVIn") || "").trim();
+  const r = await GymoraCloud.verifyConfirm(code);
+  if (r.ok) { updateUser({ verified: true }); toast(t("verifiedMsg")); obStep = "done"; obRender(); return; }
+  obErr(r.offline ? t("verifyNet") : (r.data && r.data.error) || t("verifyBad"));
+}
+
 function obDoneHTML() {
   const g = obData.gender;
   const sub = g === "f" ? t("obDoneSubF") : g === "m" ? t("obDoneSubM") : t("obDoneSubNA");
@@ -295,6 +342,7 @@ function obValidate() {
 function obNext() {
   if (!obValidate()) return;
   const idx = obFlow.indexOf(obStep);
+  if (idx < 0) return;
   if (idx === obFlow.length - 1) return obFinish();
   obStep = obFlow[idx + 1];
   obRender();
@@ -310,13 +358,13 @@ function obPrev() {
 }
 
 /* ---------- finish: create the account (if new) + build the plan ---------- */
-function obFinish() {
+async function obFinish() {
   const d = obData;
   let u = currentUser();
-  if (!u) {
-    u = createUser({ name: d.name, email: d.email, age: d.age, pw: d.password, verified: true });
+  const isNew = !u;
+  if (isNew) {
+    u = createUser({ name: d.name, email: d.email, age: d.age, pw: d.password, verified: false });
     setSession(d.email);
-    if (window.GymoraCloud) GymoraCloud.signup(d.email, d.password, u); // background: cloud account
   }
   const intake = {
     height: d.height, weight: d.weight, target: d.target || null, goal: d.goal,
@@ -330,6 +378,24 @@ function obFinish() {
   updateUser(patch);
   if (typeof renderAll === "function") renderAll();
   if (typeof startReminderScheduler === "function") startReminderScheduler();
+
+  /* new accounts verify their email (server-emailed code); when the
+     backend is unreachable (offline / file://) we keep the old
+     behaviour — account works right away */
+  if (isNew && window.GymoraCloud) {
+    obVerifyState = { status: "sending" };
+    obStep = "everify"; obRender();
+    await GymoraCloud.signup(d.email, d.password, currentUser());
+    if (GymoraCloud.hasSession()) {
+      const r = await GymoraCloud.verifySend();
+      if (r.ok && r.data) {
+        obVerifyState = r.data.sent ? { status: "emailed" } : { status: "demo", code: r.data.demoCode };
+        obRender();
+        return;
+      }
+    }
+    updateUser({ verified: true }); // offline fallback
+  }
   obStep = "done";
   obRender();
 }
@@ -346,6 +412,15 @@ function obClick(e) {
   if (hit("#obGenderNA")) { obData.gender = "na"; return obNext(); }
   const opt = hit("[data-obopt]");
   if (opt) { obData[obStep] = opt.dataset.obopt; return obNext(); }
+  if (hit("#obVerifyGo")) { obVerifyGo(); return; }
+  if (hit("#obVerifyResend")) {
+    GymoraCloud.verifySend().then(r => {
+      if (r.ok && r.data) { obVerifyState = r.data.sent ? { status: "emailed" } : { status: "demo", code: r.data.demoCode }; obRender(); toast(t("verifyResend")); }
+      else obErr(r.offline ? t("verifyNet") : (r.data && r.data.error) || t("verifyBad"));
+    });
+    return;
+  }
+  if (hit("#obVerifyLater")) { obStep = "done"; obRender(); return; }
   if (hit("#obTrialPlan")) {
     premiumStartTrial();
     closeOnboarding(true);

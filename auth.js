@@ -31,7 +31,9 @@ Object.assign(I18N.en, { changePhoto: "Change photo", removePhoto: "Remove", lb:
   accessKeyMissing: "Enter the access key you were given.",
   accessKeyBad: "That access key isn't valid for this account type — it may be used, revoked, or mistyped.",
   keyGymNote: "Your gym is set automatically by your access key.",
-  signinKeyHint: "First time here? Create your account below with the access key you were given." });
+  signinKeyHint: "First time here? Create your account below with the access key you were given.",
+  verifySentTo: "We emailed a 6-digit code to",
+  verifyNet: "Couldn't reach the server — check your internet and try again." });
 Object.assign(I18N.ar, { changePhoto: "تغيير الصورة", removePhoto: "إزالة", lb: "رطل",
   adminCodeLabel: "رمز وصول المشرف",
   roleMismatch: "هذا الحساب مسجّل كـ {role}. اختر هذا النوع لتسجيل الدخول.",
@@ -49,7 +51,9 @@ Object.assign(I18N.ar, { changePhoto: "تغيير الصورة", removePhoto: "�
   accessKeyMissing: "أدخل مفتاح الوصول الذي استلمته.",
   accessKeyBad: "مفتاح الوصول غير صالح لهذا النوع من الحسابات — قد يكون مستخدَماً أو ملغياً أو مكتوباً بشكل خاطئ.",
   keyGymNote: "يُحدَّد ناديك تلقائياً من مفتاح الوصول.",
-  signinKeyHint: "أول مرة هنا؟ أنشئ حسابك أدناه باستخدام مفتاح الوصول الذي استلمته." });
+  signinKeyHint: "أول مرة هنا؟ أنشئ حسابك أدناه باستخدام مفتاح الوصول الذي استلمته.",
+  verifySentTo: "أرسلنا رمزاً من 6 أرقام إلى",
+  verifyNet: "تعذّر الوصول إلى الخادم — تحقق من الإنترنت وحاول مجدداً." });
 
 /* ---------- biometric (Face ID / fingerprint) ----------
    Uses the real device prompt (WebAuthn platform authenticator) when the
@@ -672,27 +676,57 @@ function handleGoogle() {
   setSession(email); afterAuth();
 }
 
-/* ---------- account verification (demo code) ---------- */
-let pendingCode = null;
+/* ---------- account verification ----------
+   The server generates the code and emails it (Brevo). Without an
+   email service configured — or offline / from file:// — the code is
+   shown on screen exactly like the old demo. */
+let pendingCode = null;   // demo code shown on screen (offline / no email service)
+let cloudVerify = false;  // true when the server holds the code
 function genCode() { return String(Math.floor(100000 + Math.random() * 900000)); }
-function startVerify() { pendingCode = genCode(); authView = "verify"; renderAuthView(); }
+async function startVerify() {
+  pendingCode = null; cloudVerify = false;
+  authView = "verify"; renderAuthView(); // show the screen immediately
+  if (window.GymoraCloud && GymoraCloud.hasSession()) {
+    const r = await GymoraCloud.verifySend();
+    if (r.ok && r.data) {
+      if (r.data.already) { updateUser({ verified: true }); toast(t("verifiedMsg")); return afterAuth(); }
+      cloudVerify = true;
+      pendingCode = r.data.sent ? null : (r.data.demoCode || null);
+      if (authView === "verify") renderAuthView();
+      return;
+    }
+  }
+  pendingCode = genCode();
+  if (authView === "verify") renderAuthView();
+}
 function verifyHTML() {
+  const u = currentUser();
+  const box = pendingCode
+    ? `<div class="verify-demo">${t("verifyDemo")} <b>${pendingCode}</b></div>`
+    : cloudVerify
+      ? `<div class="note" style="margin-bottom:12px">📧 ${t("verifySentTo")} <b>${esc(u ? u.email : "")}</b></div>`
+      : `<div class="note" style="margin-bottom:12px">⏳</div>`;
   return `
   <button class="auth-x" id="authX">✕</button>
   <div class="auth-title">${t("verifyTitle")}</div>
   <div class="auth-sub">${t("verifySub")}</div>
   <div class="form-err" id="authErr"></div>
-  <div class="verify-demo">${t("verifyDemo")} <b>${pendingCode}</b></div>
+  ${box}
   <div class="form-row"><label>${t("verifyCodeLabel")}</label><input id="verifyCode" inputmode="numeric" maxlength="6" placeholder="123456"></div>
   <button class="btn block" id="doVerify">${t("verifyBtn")}</button>
   <div class="auth-foot"><button class="auth-link" id="resendCode">${t("verifyResend")}</button></div>`;
 }
-function doVerify() {
+async function doVerify() {
   const code = (val("verifyCode") || "").trim();
+  if (cloudVerify) {
+    const r = await GymoraCloud.verifyConfirm(code);
+    if (r.ok) { updateUser({ verified: true }); pendingCode = null; toast(t("verifiedMsg")); return afterAuth(); }
+    return showErr(r.offline ? t("verifyNet") : (r.data && r.data.error) || t("verifyBad"));
+  }
   if (code !== pendingCode) return showErr(t("verifyBad"));
   updateUser({ verified: true }); pendingCode = null; toast(t("verifiedMsg")); afterAuth();
 }
-function resendCode() { pendingCode = genCode(); renderAuthView(); toast(t("verifyResend")); }
+function resendCode() { startVerify(); toast(t("verifyResend")); }
 function doLogout() { clearSession(); if (window.GymoraCloud) GymoraCloud.logout(); closeAuth(); renderAll(); toast(t("signOut")); }
 
 function saveProfile() {

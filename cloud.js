@@ -102,6 +102,10 @@
 
     async pull() { return call("/profile", "GET", null, true); },
 
+    /* email verification: server generates & emails the code */
+    verifySend: () => callFull("/verify/send", "POST", null, true),
+    verifyConfirm: (code) => callFull("/verify/confirm", "POST", { code }, true),
+
     /* gyms managed from the admin console; null → keep built-in defaults */
     async loadGyms() {
       const r = await call("/gyms", "GET");
