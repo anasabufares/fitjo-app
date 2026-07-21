@@ -1219,6 +1219,16 @@ h1, .hero h1, .acct-body h3 { letter-spacing: -.02em; font-weight: 900; }
 .lib-chip.lv-expert { border-color: #ef4444; color: #ef4444; }
 .lib-imgs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
 .lib-imgs img { width: 100%; border-radius: 12px; border: 1px solid var(--border); background: #fff; }
+
+/* In-app animated exercise demo: crossfade the start & finish photos */
+.ex-anim { position: relative; width: 100%; aspect-ratio: 3 / 2; margin: 12px 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: #fff; }
+.ex-anim img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ex-anim-b { animation: exFrame 1.8s ease-in-out infinite alternate; }
+@keyframes exFrame { 0%, 42% { opacity: 0; } 58%, 100% { opacity: 1; } }
+.ex-anim-tag { position: absolute; inset-inline-start: 10px; bottom: 10px; z-index: 2;
+  font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 999px;
+  background: rgba(0,0,0,.6); color: #fff; backdrop-filter: blur(4px); }
+@media (prefers-reduced-motion: reduce) { .ex-anim-b { animation: none; opacity: 1; } }
 .lib-steps { padding-inline-start: 20px; display: grid; gap: 8px; font-size: 13px; line-height: 1.55; color: var(--text); }
 .lib-spin { text-align: center; font-size: 34px; padding: 40px 0; }
 @media (max-width: 560px) { .lib-grid { grid-template-columns: 1fr 1fr; } .lib-filters { grid-template-columns: 1fr; } }

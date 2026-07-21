@@ -15,6 +15,20 @@ const VID_I18N = {
 Object.assign(I18N.en, VID_I18N.en);
 Object.assign(I18N.ar, VID_I18N.ar);
 
+/* ---------- self-hosted (in-app) videos ----------
+   A file listed in EXVIDS_LOCAL (see exvideos-local.js) plays as a
+   real in-app <video>, no YouTube. Takes priority over EXVIDS. */
+function resolveVideoUrl(path) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  const base = window.GYMORA_VIDEO_BASE || "";
+  return base ? base.replace(/\/?$/, "/") + path.replace(/^\//, "") : path;
+}
+function exLocalVid(en) {
+  const map = window.EXVIDS_LOCAL || {};
+  return resolveVideoUrl(map[String(en || "").toLowerCase().trim()]);
+}
+
 /* exercise (english name, lowercase) -> verified YouTube video id.
    3D anatomy-animation style (Muscle & Motion, DEMIC and similar):
    animated model performing the lift with the working muscles
@@ -63,11 +77,15 @@ const EXVIDS = {
 
 function exVidId(en) { return EXVIDS[String(en || "").toLowerCase().trim()] || null; }
 
-/* small round ▶ button placed next to an exercise name */
+/* small round ▶ button placed next to an exercise name.
+   Prefers a self-hosted in-app video, falls back to the YouTube guide. */
 function exVidBtn(en, label) {
-  const id = exVidId(en);
-  if (!id) return "";
-  return `<button class="vid-btn" data-video="${id}" data-vtitle="${esc(label || en)}" title="${t("vidGuide")}" aria-label="${t("vidGuide")}">▶</button>`;
+  const local = exLocalVid(en);
+  const attr = local
+    ? `data-localvideo="${esc(local)}"`
+    : (exVidId(en) ? `data-video="${exVidId(en)}"` : null);
+  if (!attr) return "";
+  return `<button class="vid-btn" ${attr} data-vtitle="${esc(label || en)}" title="${t("vidGuide")}" aria-label="${t("vidGuide")}">▶</button>`;
 }
 
 /* ---------- modal player ---------- */
@@ -98,13 +116,31 @@ function openVideo(id, title) {
   </div>`;
   el.classList.add("open");
 }
+/* native in-app player for a self-hosted video file (no YouTube) */
+function openLocalVideo(src, title) {
+  const el = vidContainer();
+  el.innerHTML = `
+  <div class="vid-modal">
+    <button class="auth-x" id="vidX">✕</button>
+    <div class="vid-title">🎬 ${esc(title)} — ${t("vidGuide")}</div>
+    <div class="vid-frame">
+      <video src="${esc(src)}" controls autoplay loop playsinline muted
+        style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000"></video>
+    </div>
+  </div>`;
+  el.classList.add("open");
+  const v = el.querySelector("video");
+  if (v) v.play().catch(() => {});
+}
 function closeVideo() {
   const el = document.getElementById("vidBack");
-  if (el) { el.classList.remove("open"); el.innerHTML = ""; } // clearing the iframe stops playback
+  if (el) { el.classList.remove("open"); el.innerHTML = ""; } // clearing the media stops playback
 }
 
-/* delegated: any [data-video] element anywhere in the app opens the player */
+/* delegated: [data-localvideo] plays in-app; [data-video] uses YouTube */
 document.addEventListener("click", (e) => {
+  const lv = e.target.closest("[data-localvideo]");
+  if (lv) { e.preventDefault(); openLocalVideo(lv.dataset.localvideo, lv.dataset.vtitle || ""); return; }
   const b = e.target.closest("[data-video]");
   if (b) { e.preventDefault(); openVideo(b.dataset.video, b.dataset.vtitle || ""); }
 });
