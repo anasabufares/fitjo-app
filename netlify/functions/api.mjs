@@ -113,6 +113,7 @@ export default async (req) => {
      stale — a fresh announcement looks like it vanished and deleting
      it 404s — so both stores read strongly. */
   const noticeStore = getStore({ name: "gymora-notices", consistency: "strong" });
+  const ticketStore = getStore({ name: "gymora-tickets", consistency: "strong" });
   const designStore = getStore({ name: "gymora-design", consistency: "strong" });
 
   /* Resolve the requesting user ({ email, profile }), or null. */
@@ -498,13 +499,18 @@ export default async (req) => {
   const threadId = (a, b) => "thread:" + createHash("sha256").update([a, b].sort().join("|")).digest("hex").slice(0, 32);
   const inboxId = (e) => "inbox:" + e;
 
+  /* Who a member may write to: their coach, full stop. Reception,
+     management and anything else at the gym goes through a support
+     ticket (/tickets) so it lands in a queue someone owns. Staff-side
+     people can still reach a member first, and a member may always
+     reply inside a conversation somebody else started. */
   function canMessage(mine, theirs) {
     const r1 = mine.role || "user", r2 = theirs.role || "user";
-    if (r1 === "admin" || r2 === "admin") return true;          // support line
+    const sameGym = !(mine.gymId && theirs.gymId && mine.gymId !== theirs.gymId);
     if (r1 === "user" && r2 === "user") return false;           // no member-to-member DMs
-    const g1 = mine.gymId, g2 = theirs.gymId;
-    if (g1 && g2 && g1 !== g2) return false;                    // different gyms
-    return true;
+    if (r1 === "user") return r2 === "coach" && sameGym;        // members start chats with coaches only
+    if (r1 === "admin" || r2 === "admin") return true;          // GYMORA support reaches anyone
+    return sameGym;                                             // coaches, staff and owners at one gym
   }
 
   /* update one side's inbox index after a message */
@@ -556,10 +562,20 @@ export default async (req) => {
       const rec = await users.get(to, { type: "json" });
       if (!rec) return json(404, { error: "That person doesn't have a GYMORA account yet" });
       const theirs = rec.profile || {};
-      if (!canMessage(me.profile, theirs)) return json(403, { error: "You can't message this person" });
       const m = { f: me.email, x: text, at: Date.now() };
       const tid = threadId(me.email, to);
       const th = (await msgStore.get(tid, { type: "json" })) || { a: me.email, b: to, msgs: [] };
+      if (!canMessage(me.profile, theirs)) {
+        // replying to whoever wrote to you first is always allowed
+        const theyWroteFirst = (th.msgs || []).some(x => x.f === to);
+        if (!theyWroteFirst) {
+          return json(403, {
+            error: (me.profile.role || "user") === "user"
+              ? "Members can message their coach here — for anything else at the gym, open a support ticket"
+              : "You can't message this person",
+          });
+        }
+      }
       th.msgs = (th.msgs || []).concat(m).slice(-300);
       th.updatedAt = m.at;
       await msgStore.setJSON(tid, th);
@@ -600,6 +616,115 @@ export default async (req) => {
     const rank = { admin: 0, owner: 1, coach: 2, staff: 3, user: 4 };
     out.sort((a, b) => (rank[a.role] ?? 9) - (rank[b.role] ?? 9) || a.name.localeCompare(b.name));
     return json(200, { contacts: out });
+  }
+
+  /* =============================================================
+     SUPPORT TICKETS — a member's line to the gym team
+     Members chat with their coach; everything else (membership,
+     payment, facilities, a complaint) is opened as a ticket that
+     lands in the gym staff & owner queue. One blob per ticket plus a
+     "list" index holding the summaries the two queues are built from.
+     ============================================================= */
+  const TICKET_CATS = ["membership", "payment", "facility", "class", "coach", "other"];
+  const TICKET_STATUS = ["open", "answered", "closed"];
+  const ticketSummary = (t) => ({
+    id: t.id, subject: t.subject, category: t.category, by: t.by, byName: t.byName,
+    gymId: t.gymId, status: t.status, createdAt: t.createdAt, updatedAt: t.updatedAt,
+    last: String((t.msgs[t.msgs.length - 1] || {}).x || "").slice(0, 140),
+    staffUnread: 0, userUnread: 0,
+  });
+
+  if (path === "/tickets") {
+    const me = await requester();
+    if (!me) return json(401, { error: "Not signed in" });
+    const myRole = me.profile.role || "user";
+    const handlesTickets = ["staff", "owner", "admin"].includes(myRole);
+    const myGym = me.profile.gymId || null;
+    const list = (await ticketStore.get("list", { type: "json" })) || [];
+    const mayOpen = (t) => handlesTickets
+      ? (myRole === "admin" || !myGym || !t.gymId || t.gymId === myGym)
+      : t.by === me.email;
+
+    if (req.method === "GET") {
+      const id = url.searchParams.get("id");
+      if (id) {
+        const t = await ticketStore.get("t:" + id, { type: "json" });
+        if (!t) return json(404, { error: "Ticket not found" });
+        if (!mayOpen(t)) return json(403, { error: "Not your ticket" });
+        const i = list.findIndex(x => x.id === id);
+        if (i >= 0) {                       // opening it clears your side's unread mark
+          if (handlesTickets) list[i].staffUnread = 0; else list[i].userUnread = 0;
+          await ticketStore.setJSON("list", list);
+        }
+        return json(200, { ticket: t });
+      }
+      const mine = list.filter(mayOpen);
+      return json(200, {
+        tickets: mine,
+        unread: mine.reduce((n, x) => n + ((handlesTickets ? x.staffUnread : x.userUnread) || 0), 0),
+      });
+    }
+
+    if (req.method === "POST") {
+      let body; try { body = await req.json(); } catch { return json(400, { error: "Invalid JSON" }); }
+      const text = String(body.text || "").trim().slice(0, 2000);
+      if (!text) return json(400, { error: "Write your message first" });
+
+      if (!body.id) {                                            // open a new ticket
+        const now = Date.now();
+        const t = {
+          id: "tk" + now + Math.random().toString(36).slice(2, 6),
+          subject: String(body.subject || "").trim().slice(0, 120) || "Support request",
+          category: TICKET_CATS.includes(body.category) ? body.category : "other",
+          by: me.email, byName: me.profile.name || me.email,
+          gymId: myGym, status: "open", createdAt: now, updatedAt: now,
+          msgs: [{ f: me.email, x: text, at: now }],
+        };
+        await ticketStore.setJSON("t:" + t.id, t);
+        const sum = ticketSummary(t);
+        sum.staffUnread = 1;
+        list.unshift(sum);
+        await ticketStore.setJSON("list", list.slice(0, 500));
+        return json(200, { ticket: t });
+      }
+
+      const t = await ticketStore.get("t:" + body.id, { type: "json" });     // reply
+      if (!t) return json(404, { error: "Ticket not found" });
+      if (!mayOpen(t)) return json(403, { error: "Not your ticket" });
+      const at = Date.now();
+      t.msgs.push({ f: me.email, x: text, at, staff: handlesTickets, name: me.profile.name || me.email });
+      t.msgs = t.msgs.slice(-200);
+      t.updatedAt = at;
+      t.status = handlesTickets ? "answered" : "open";
+      await ticketStore.setJSON("t:" + t.id, t);
+      const i = list.findIndex(x => x.id === t.id);
+      if (i >= 0) {
+        const prev = list[i];
+        list[i] = {
+          ...ticketSummary(t),
+          staffUnread: handlesTickets ? 0 : (prev.staffUnread || 0) + 1,
+          userUnread: handlesTickets ? (prev.userUnread || 0) + 1 : 0,
+        };
+        await ticketStore.setJSON("list", list);
+      }
+      return json(200, { ticket: t });
+    }
+
+    if (req.method === "PUT") {                                  // change the status
+      let body; try { body = await req.json(); } catch { return json(400, { error: "Invalid JSON" }); }
+      const status = TICKET_STATUS.includes(body.status) ? body.status : null;
+      if (!status) return json(400, { error: "Unknown status" });
+      const t = await ticketStore.get("t:" + body.id, { type: "json" });
+      if (!t) return json(404, { error: "Ticket not found" });
+      if (!mayOpen(t)) return json(403, { error: "Not your ticket" });
+      if (!handlesTickets && status === "answered") return json(403, { error: "Only the gym team can answer a ticket" });
+      t.status = status;
+      t.updatedAt = Date.now();
+      await ticketStore.setJSON("t:" + t.id, t);
+      const i = list.findIndex(x => x.id === t.id);
+      if (i >= 0) { list[i] = { ...list[i], status, updatedAt: t.updatedAt }; await ticketStore.setJSON("list", list); }
+      return json(200, { ok: true, status });
+    }
   }
 
   /* =============================================================

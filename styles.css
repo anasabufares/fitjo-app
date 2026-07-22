@@ -1308,3 +1308,16 @@ h1, .hero h1, .acct-body h3 { letter-spacing: -.02em; font-weight: 900; }
 .nc-head .nc-when { margin-inline-start: auto; font-size: 11px; color: var(--muted); }
 .nc-body { font-size: 13px; line-height: 1.5; margin-top: 5px; }
 .nc-from { font-size: 10.5px; color: var(--muted); margin-top: 7px; text-transform: uppercase; letter-spacing: .05em; }
+
+/* =============================================================
+   Support tickets
+   ============================================================= */
+.tk-ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0;
+  background: var(--surface-2); border: 1px solid var(--border); font-size: 17px; }
+.tk-ic.lg { width: 46px; height: 46px; font-size: 21px; }
+.tk-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.tk-head .acct-name { font-size: 16px; font-weight: 800; }
+.pill.tk-open { background: rgba(59, 130, 246, .16); color: #3b82f6; }
+.pill.tk-answered { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.pill.tk-closed { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+.bubble .b-who { display: block; font-size: 10px; font-weight: 800; opacity: .65; margin-bottom: 2px; text-transform: uppercase; letter-spacing: .04em; }

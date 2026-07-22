@@ -120,7 +120,9 @@ function ownerGym(u) { return GYMS.find(g => g.id === (u && u.gymId)) || GYMS[0]
 function navForRole(u) {
   const msg = ["messages", "💬", t("msgTab")];
   const news = ["notices", "📣", t("ntTab")];
-  const common = [msg, news, ["preferences", "⚙️", t("preferences")], ["security", "🔒", t("security")]];
+  // members open tickets; staff, owners and admins work the queue
+  const tickets = ["tickets", "🎫", isStaffRole(u.role) && u.role !== "coach" ? t("tkQueue") : t("tkTab")];
+  const common = [msg, tickets, news, ["preferences", "⚙️", t("preferences")], ["security", "🔒", t("security")]];
   if (u.role === "coach") return [["coach", "🧑‍🏫", t("coachPortal")], ["profile", "👤", t("myProfile")], ...common];
   if (u.role === "owner") return [["profile", "👤", t("myProfile")], ...common]; // the owner dashboard lives on the front page (My Gym circle)
   if (u.role === "staff") return [["staff", "🪪", t("staffDash")], ["profile", "👤", t("myProfile")], ...common];
@@ -128,7 +130,7 @@ function navForRole(u) {
   // regular member — side menu (nutrition/supplements/rank live on the
   // home-screen category circles; email moved inside Security)
   return [
-    ["profile", "👤", t("myProfile")], msg, news, ["plan", "🎯", t("myPlan")],
+    ["profile", "👤", t("myProfile")], msg, tickets, news, ["plan", "🎯", t("myPlan")],
     ["premium", "⭐", t("pmTab")],
     ["workouts", "📋", t("workouts")], ["library", "📚", t("libTitle")],
     ["classes", "🗓️", t("clsTab")], ["progress", "📈", t("myProgress")],
@@ -321,7 +323,10 @@ function secOwner(u) {
   return `
   <h3>🏢 ${t("ownerDash")}</h3>
   <div class="h-sub">${gym.name[state.lang]} · ${t("ownerSub")}</div>
-  <button class="btn ghost" id="portalMsgs" style="margin-bottom:12px">💬 ${t("msgTab")}</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    <button class="btn ghost" id="portalMsgs">💬 ${t("msgTab")}</button>
+    <button class="btn ghost" id="tkGoTickets">🎫 ${t("tkQueue")}</button>
+  </div>
   <div class="stat-row">
     <div class="stat"><div class="n" style="color:var(--accent)">${head}</div><div class="l">${t("inGymNow")}</div></div>
     <div class="stat"><div class="n">${members.length}</div><div class="l">${t("totalSubs")}</div></div>
@@ -439,7 +444,10 @@ function secStaff(u) {
   return `
   <h3>🪪 ${t("staffDash")}</h3>
   <div class="h-sub">${t("staffSub")}</div>
-  <button class="btn ghost" id="portalMsgs" style="margin-bottom:12px">💬 ${t("msgTab")}</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    <button class="btn ghost" id="portalMsgs">💬 ${t("msgTab")}</button>
+    <button class="btn ghost" id="tkGoTickets">🎫 ${t("tkQueue")}</button>
+  </div>
   <div class="note" style="margin-bottom:12px">🪪 ${t("staffRoleLabel")}: <b>${staffRoleName(u.staffRole) || t("noRoleYet")}</b> · ${ownerGym(u).name[state.lang]}</div>
   <div class="stat-row">
     <div class="stat"><div class="n">${18 + (new Date().getHours())}</div><div class="l">${t("checkinsToday")}</div></div>

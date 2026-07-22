@@ -19,9 +19,10 @@
 const MSG_I18N = {
   en: {
     msgTab: "Messages", msgTitle: "Messages",
-    msgSubMember: "Talk to the coaches and staff at your gym.",
+    msgSubMember: "Talk to your coach. For membership, payments or anything else at the gym, open a ticket.",
     msgSubStaff: "Talk to your members and the rest of the team.",
     msgNew: "New message", msgNewSub: "Pick who to write to.",
+    msgNewSubMember: "You can message the coaches at your gym.",
     msgNoThreads: "No conversations yet. Start one — tap “New message”.",
     msgNoContacts: "Nobody to message yet. Members appear here once they join your gym.",
     msgSearchPeople: "Search people…",
@@ -35,9 +36,10 @@ const MSG_I18N = {
   },
   ar: {
     msgTab: "الرسائل", msgTitle: "الرسائل",
-    msgSubMember: "تواصل مع المدرّبين وموظّفي ناديك.",
+    msgSubMember: "تواصل مع مدرّبك. للاشتراك أو الدفع أو أي أمر آخر في النادي، افتح طلب دعم.",
     msgSubStaff: "تواصل مع أعضائك وبقيّة الفريق.",
     msgNew: "رسالة جديدة", msgNewSub: "اختر من تريد مراسلته.",
+    msgNewSubMember: "يمكنك مراسلة المدرّبين في ناديك.",
     msgNoThreads: "لا محادثات بعد. ابدأ واحدة — اضغط «رسالة جديدة».",
     msgNoContacts: "لا أحد لمراسلته بعد. سيظهر الأعضاء هنا فور انضمامهم لناديك.",
     msgSearchPeople: "ابحث عن شخص…",
@@ -145,12 +147,15 @@ async function loadMsgThread(silent) {
    demo people this browser knows about */
 function localContacts(me) {
   const iAmStaff = typeof isStaffRole === "function" && isStaffRole(me.role);
+  /* same rule the server enforces: a member writes to coaches only —
+     reception, management and the rest go through a support ticket */
   const allowed = (them) => {
     const r = them.role || "user";
+    const sameGym = !(me.gymId && them.gymId && me.gymId !== them.gymId);
+    if (!iAmStaff) return r === "coach" && sameGym;
     if (me.role === "admin" || r === "admin") return true;
-    if (!iAmStaff && r === "user") return false;                       // members don't DM members
-    if (me.gymId && them.gymId && me.gymId !== them.gymId) return false;
-    return true;
+    if (r === "user" || r === "coach" || r === "staff" || r === "owner") return sameGym;
+    return false;
   };
   const accounts = (typeof getUsers === "function" ? getUsers() : [])
     .filter(x => x.email !== me.email && !x.banned && allowed(x))
@@ -268,13 +273,18 @@ function secMessages(u) {
 
 function msgContactsHTML() {
   if (msgContacts === null) setTimeout(() => loadMsgContacts(), 0);
+  const u = currentUser();
+  const member = !(typeof isStaffRole === "function" && isStaffRole(u && u.role));
   const q = msgQuery.trim().toLowerCase();
   const shown = (msgContacts || []).filter(c => !q || (c.name || "").toLowerCase().includes(q) || (c.email || "").toLowerCase().includes(q));
+  const noCoach = member && msgContacts !== null && !msgContacts.length;
   return `
   <div id="msgWrap">
     <button class="linkbtn" id="msgBack" style="display:inline-block;margin:0 0 12px">‹ ${t("msgBack")}</button>
     <h3>✍️ ${t("msgNew")}</h3>
-    <div class="h-sub">${t("msgNewSub")}</div>
+    <div class="h-sub">${member ? t("msgNewSubMember") : t("msgNewSub")}</div>
+    ${noCoach ? `<div class="note" style="margin-bottom:10px">${t("tkNoCoachYet")}</div>` : ""}
+    ${member ? `<button class="btn ghost" id="tkGoTickets" style="margin-bottom:12px">${t("tkGoTickets")}</button>` : ""}
     <input id="msgSearch" class="control" style="width:100%;margin-bottom:12px" placeholder="${t("msgSearchPeople")}" value="${esc(msgQuery)}">
     ${msgContacts === null ? `<div class="note">${t("msgLoading")}</div>` : `
     <div class="portal-list">

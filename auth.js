@@ -201,6 +201,7 @@ function openAuth(view) {
   if (typeof resetNutrition === "function") resetNutrition();
   if (typeof resetPortals === "function") resetPortals(); // fresh member list each time
   if (typeof resetMessages === "function" && view !== "account") resetMessages();
+  if (typeof resetTickets === "function" && view !== "account") resetTickets();
   document.getElementById("authBack").classList.add("open");
   document.body.style.overflow = "hidden";
   renderAuthView();
@@ -342,6 +343,7 @@ function sectionHTML(sec) {
   if (sec === "library" && typeof secLibrary === "function") return secLibrary(u);
   if (sec === "premium" && typeof secPremiumTab === "function") return secPremiumTab(u);
   if (sec === "messages" && typeof secMessages === "function") return secMessages(u);
+  if (sec === "tickets" && typeof secTickets === "function") return secTickets(u);
   if (sec === "notices" && typeof secNotices === "function") return secNotices(u);
   if (sec === "classes" && typeof secClasses === "function") return secClasses(u);
   if (sec === "supps" && typeof secSupps === "function") return secSupps(u);
@@ -794,6 +796,7 @@ function setPref(kind, value) {
 /* ---------- event routing ---------- */
 function onAuthClick(e) {
   const hit = (s) => e.target.closest(s);
+  if (typeof handleTicketClick === "function" && handleTicketClick(e)) return;
   if (typeof handleMsgClick === "function" && handleMsgClick(e)) return;
   if (typeof handleNoticeClick === "function" && handleNoticeClick(e)) return;
   if (typeof handlePremiumClick === "function" && handlePremiumClick(e)) return;

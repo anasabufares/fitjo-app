@@ -113,6 +113,13 @@
     msgRead: (email) => callFull("/messages", "PUT", { with: email }, true),
     contacts: () => callFull("/contacts", "GET", null, true),
 
+    /* support tickets: a member's line to the gym team */
+    tickets: () => callFull("/tickets", "GET", null, true),
+    ticket: (id) => callFull("/tickets?id=" + encodeURIComponent(id), "GET", null, true),
+    ticketOpen: (subject, category, text) => callFull("/tickets", "POST", { subject, category, text }, true),
+    ticketReply: (id, text) => callFull("/tickets", "POST", { id, text }, true),
+    ticketStatus: (id, status) => callFull("/tickets", "PUT", { id, status }, true),
+
     /* announcements written by an admin (or a gym owner) */
     notices: () => callFull("/notices", "GET", null, true),
     noticeCreate: (n) => callFull("/notices", "POST", n, true),
