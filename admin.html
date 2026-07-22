@@ -92,6 +92,55 @@
     .editor-foot .btn { width: auto; padding: 12px 26px; margin: 0; }
     .editor-foot .ghost { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); }
     .eerr { color: #f87171; font-size: 13px; margin-top: 10px; text-align: end; }
+
+    /* ---- console tabs ---- */
+    .tabs-bar { display: flex; gap: 8px; flex-wrap: wrap; max-width: 1100px; margin: 0 auto; padding: 14px 18px 0; }
+    .tabbtn { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 700; }
+    .tabbtn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ---- announcements ---- */
+    .ann-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; }
+    .ann-form input, .ann-form select, .ann-form textarea { width: 100%; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: 14px; font-family: inherit; outline: none; resize: vertical; }
+    .ann-form input:focus, .ann-form textarea:focus { border-color: var(--accent); }
+
+    /* ---- design studio ---- */
+    .ds-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+    .ds-sep { width: 1px; height: 22px; background: var(--border); }
+    .ds-sel { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: 12px; font-weight: 700; outline: none; }
+    .ds-status { font-size: 12.5px; color: var(--muted); margin-bottom: 12px; min-height: 18px; }
+    .ds-stage { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
+    .ds-frame-wrap { width: 100%; max-width: 390px; height: 78vh; margin-inline: auto; border: 1px solid var(--border); border-radius: 18px; overflow: hidden; background: #000; transition: max-width .2s; }
+    #dsFrame { width: 100%; height: 100%; border: 0; display: block; }
+    .ds-panel { max-height: 78vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    .ds-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px; }
+    .ds-card h3 { font-family: inherit; text-transform: none; letter-spacing: 0; font-size: 14px; margin-bottom: 8px; }
+    .ds-hint { font-size: 12px; color: var(--muted); margin: 4px 0 10px; line-height: 1.45; }
+    .ds-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; margin-bottom: 9px; }
+    .ds-row.col { flex-direction: column; align-items: stretch; gap: 5px; }
+    .ds-row > span { color: var(--muted); }
+    .ds-row input[type="color"] { width: 40px; height: 28px; border: 1px solid var(--border); border-radius: 8px; background: none; padding: 2px; cursor: pointer; }
+    .ds-row input[type="range"] { width: 150px; accent-color: var(--accent); }
+    .ds-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+    .ds-row input[type="number"], .ds-row select, .ds-row textarea { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); border-radius: 9px; padding: 6px 8px; font-size: 12.5px; font-family: inherit; outline: none; }
+    .ds-row input[type="number"] { width: 72px; }
+    .ds-color, .ds-px { display: flex; align-items: center; gap: 5px; }
+    .ds-px i { font-size: 11px; color: var(--muted); font-style: normal; }
+    .ds-x { border: none; background: none; color: #f87171; font-size: 12px; padding: 0 2px; }
+    .ds-seg { display: flex; gap: 6px; margin-bottom: 8px; }
+    .ds-seg button { flex: 1; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); border-radius: 10px; padding: 7px 4px; font-size: 12px; font-weight: 700; }
+    .ds-seg button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .ds-presets { display: flex; gap: 8px; margin-bottom: 12px; }
+    .ds-preset { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); }
+    .ds-sel-info { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+    .ds-sel-info code { background: var(--surface-2); padding: 3px 7px; border-radius: 6px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ds-count { font-size: 11px; color: var(--muted); margin-top: 8px; }
+    #dsCss { width: 100%; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 8px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; outline: none; }
+    @media (max-width: 900px) {
+      .ds-stage { grid-template-columns: 1fr; }
+      .ds-frame-wrap { height: 60vh; }
+      .ds-panel { max-height: none; }
+    }
   </style>
 </head>
 <body>
@@ -119,7 +168,19 @@
       <div class="who" id="who"></div>
       <button class="out" id="signOut">Sign out</button>
     </header>
-    <div class="wrap">
+    <nav class="tabs-bar" id="tabsBar">
+      <button class="tabbtn on" data-tab="main">📊 Overview</button>
+      <button class="tabbtn" data-tab="notices">📣 Announcements</button>
+      <button class="tabbtn" data-tab="design">🎨 Design studio</button>
+    </nav>
+
+    <!-- ---- announcements console ---- -->
+    <div class="wrap" id="panelNotices" style="display:none"></div>
+
+    <!-- ---- visual design studio ---- -->
+    <div class="wrap" id="panelDesign" style="display:none;max-width:1400px"></div>
+
+    <div class="wrap" id="panelMain">
       <div class="src" id="srcNote"></div>
       <div class="tiles" id="tiles"></div>
 
@@ -222,6 +283,7 @@
 
   <script src="data.js"></script>
   <script src="keys.js"></script>
+  <script src="admin-studio.js"></script>
   <script>
   (function () {
     const API = "/api";
@@ -305,6 +367,17 @@
     /* ---------- render ---------- */
     const fmt = (ts) => ts ? new Date(ts).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : "—";
     function dayKey(d) { const x = new Date(d); return x.toISOString().slice(0, 10); }
+
+    /* ---------- console tabs ---------- */
+    $("#tabsBar").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-tab]");
+      if (!b) return;
+      document.querySelectorAll(".tabbtn").forEach(x => x.classList.toggle("on", x === b));
+      $("#panelMain").style.display = b.dataset.tab === "main" ? "block" : "none";
+      $("#panelNotices").style.display = b.dataset.tab === "notices" ? "block" : "none";
+      $("#panelDesign").style.display = b.dataset.tab === "design" ? "block" : "none";
+      if (window.AdminStudio) AdminStudio.mount({ token, mode, email: meEmail });
+    });
 
     async function open() {
       $("#login").style.display = "none";

@@ -181,7 +181,8 @@ function renderAuthButton() {
   const slot = document.getElementById("authSlot"); if (!slot) return;
   const u = currentUser();
   if (u) {
-    slot.innerHTML = `<button class="avatar-sm" id="acctBtn" title="${esc(u.name)}">${avatarInner(u)}</button>`;
+    const unread = typeof msgUnread === "number" ? msgUnread : 0;
+    slot.innerHTML = `<button class="avatar-sm" id="acctBtn" title="${esc(u.name)}">${avatarInner(u)}${unread ? `<span class="acct-dot">${unread > 9 ? "9+" : unread}</span>` : ""}</button>`;
     document.getElementById("acctBtn").onclick = () => openAuth("account");
   } else {
     slot.innerHTML = `<button class="control" id="signInBtn" style="font-weight:700">${t("signIn")}</button>`;
@@ -199,6 +200,7 @@ function openAuth(view) {
   if (typeof resetLibrary === "function") resetLibrary();
   if (typeof resetNutrition === "function") resetNutrition();
   if (typeof resetPortals === "function") resetPortals(); // fresh member list each time
+  if (typeof resetMessages === "function" && view !== "account") resetMessages();
   document.getElementById("authBack").classList.add("open");
   document.body.style.overflow = "hidden";
   renderAuthView();
@@ -293,7 +295,13 @@ function accountHTML() {
       <div class="mh-txt"><div class="acct-name">${esc(u.name)}</div><div class="acct-email">${esc(u.email)}</div></div>
     </div>
     <nav class="menu-list">
-      ${nav.map(([k, ic, l]) => `<button class="menu-item" data-sec="${k}"><span class="mi-ic">${ic}</span><span class="mi-l">${l}</span><span class="mi-arrow">›</span></button>`).join("")}
+      ${nav.map(([k, ic, l]) => {
+        const badge = k === "messages" && typeof msgUnread === "number" && msgUnread
+          ? `<span class="msg-badge">${msgUnread > 9 ? "9+" : msgUnread}</span>`
+          : k === "notices" && typeof noticeUnseen === "function" && noticeUnseen().length
+          ? `<span class="msg-badge">${noticeUnseen().length}</span>` : "";
+        return `<button class="menu-item" data-sec="${k}"><span class="mi-ic">${ic}</span><span class="mi-l">${l}${badge}</span><span class="mi-arrow">›</span></button>`;
+      }).join("")}
       <button class="menu-item mi-signout" id="signOutBtn"><span class="mi-ic">↩</span><span class="mi-l">${t("signOut")}</span></button>
     </nav>`;
   }
@@ -333,6 +341,8 @@ function sectionHTML(sec) {
   if (sec === "workouts" && typeof secWorkouts === "function") return typeof gatePremium === "function" ? gatePremium(u, secWorkouts) : secWorkouts(u);
   if (sec === "library" && typeof secLibrary === "function") return secLibrary(u);
   if (sec === "premium" && typeof secPremiumTab === "function") return secPremiumTab(u);
+  if (sec === "messages" && typeof secMessages === "function") return secMessages(u);
+  if (sec === "notices" && typeof secNotices === "function") return secNotices(u);
   if (sec === "classes" && typeof secClasses === "function") return secClasses(u);
   if (sec === "supps" && typeof secSupps === "function") return secSupps(u);
   if (sec === "points" && typeof secPoints === "function") return secPoints(u);
@@ -784,6 +794,8 @@ function setPref(kind, value) {
 /* ---------- event routing ---------- */
 function onAuthClick(e) {
   const hit = (s) => e.target.closest(s);
+  if (typeof handleMsgClick === "function" && handleMsgClick(e)) return;
+  if (typeof handleNoticeClick === "function" && handleNoticeClick(e)) return;
   if (typeof handlePremiumClick === "function" && handlePremiumClick(e)) return;
   if (typeof handleLibClick === "function" && handleLibClick(e)) return;
   if (typeof handleClassClick === "function" && handleClassClick(e)) return;

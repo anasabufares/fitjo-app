@@ -106,6 +106,25 @@
     verifySend: () => callFull("/verify/send", "POST", null, true),
     verifyConfirm: (code) => callFull("/verify/confirm", "POST", { code }, true),
 
+    /* messaging: coaches ↔ members ↔ owner & staff */
+    msgThreads: () => callFull("/messages", "GET", null, true),
+    msgThread: (email) => callFull("/messages?with=" + encodeURIComponent(email), "GET", null, true),
+    msgSend: (to, text) => callFull("/messages", "POST", { to, text }, true),
+    msgRead: (email) => callFull("/messages", "PUT", { with: email }, true),
+    contacts: () => callFull("/contacts", "GET", null, true),
+
+    /* announcements written by an admin (or a gym owner) */
+    notices: () => callFull("/notices", "GET", null, true),
+    noticeCreate: (n) => callFull("/notices", "POST", n, true),
+    noticeUpdate: (n) => callFull("/notices", "PUT", n, true),
+    noticeDelete: (id) => callFull("/notices", "DELETE", { id }, true),
+
+    /* the visual design published from the admin console */
+    designLoad: () => call("/design", "GET"),
+    designSave: (design) => callFull("/design", "PUT", { design }, true),
+    designClear: () => callFull("/design", "DELETE", null, true),
+    designUndo: () => callFull("/design", "POST", null, true),
+
     /* gyms managed from the admin console; null → keep built-in defaults */
     async loadGyms() {
       const r = await call("/gyms", "GET");

@@ -83,7 +83,7 @@ const hashPassword = (pw, salt) => scryptSync(String(pw), salt, 32).toString("he
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 };
 const json = (status, data) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json", ...CORS } });
@@ -104,6 +104,11 @@ export default async (req) => {
   const users = getStore({ name: "gymora-users", consistency: "strong" });
   const gymsStore = getStore("gymora-gyms");
   const keysStore = getStore({ name: "gymora-keys", consistency: "strong" });
+  /* messages must be strongly consistent: a reply written a second ago
+     has to be visible to the other side immediately. */
+  const msgStore = getStore({ name: "gymora-msgs", consistency: "strong" });
+  const noticeStore = getStore("gymora-notices");
+  const designStore = getStore("gymora-design");
 
   /* Resolve the requesting user ({ email, profile }), or null. */
   async function requester() {
@@ -475,6 +480,233 @@ export default async (req) => {
     record.profile = { ...(record.profile || {}), verified: true };
     await users.setJSON(me.email, record);
     return json(200, { ok: true });
+  }
+
+  /* =============================================================
+     MESSAGING — coaches ↔ members ↔ gym owner & staff
+     One blob per conversation ("thread:<hash of the two emails>")
+     plus a per-person index ("inbox:<email>") that holds the last
+     line and the unread count, so opening the inbox is one read.
+     Rule: members can't message each other; everyone else at the
+     same gym can talk, and admins can reach anyone.
+     ============================================================= */
+  const threadId = (a, b) => "thread:" + createHash("sha256").update([a, b].sort().join("|")).digest("hex").slice(0, 32);
+  const inboxId = (e) => "inbox:" + e;
+
+  function canMessage(mine, theirs) {
+    const r1 = mine.role || "user", r2 = theirs.role || "user";
+    if (r1 === "admin" || r2 === "admin") return true;          // support line
+    if (r1 === "user" && r2 === "user") return false;           // no member-to-member DMs
+    const g1 = mine.gymId, g2 = theirs.gymId;
+    if (g1 && g2 && g1 !== g2) return false;                    // different gyms
+    return true;
+  }
+
+  /* update one side's inbox index after a message */
+  async function bumpInbox(owner, other, otherName, otherRole, last, at, unreadDelta) {
+    const id = inboxId(owner);
+    const box = (await msgStore.get(id, { type: "json" })) || { threads: {} };
+    if (!box.threads) box.threads = {};
+    const cur = box.threads[other] || {};
+    box.threads[other] = {
+      with: other, name: otherName, role: otherRole,
+      last: String(last).slice(0, 140), at,
+      unread: unreadDelta ? (cur.unread || 0) + unreadDelta : 0,
+    };
+    await msgStore.setJSON(id, box);
+  }
+
+  if (path === "/messages") {
+    const me = await requester();
+    if (!me) return json(401, { error: "Not signed in" });
+
+    if (req.method === "GET") {
+      const other = String(url.searchParams.get("with") || "").trim().toLowerCase();
+      if (!other) {
+        const box = (await msgStore.get(inboxId(me.email), { type: "json" })) || { threads: {} };
+        const list = Object.values(box.threads || {}).sort((a, b) => (b.at || 0) - (a.at || 0));
+        return json(200, { threads: list, unread: list.reduce((n, x) => n + (x.unread || 0), 0) });
+      }
+      const th = (await msgStore.get(threadId(me.email, other), { type: "json" })) || { msgs: [] };
+      // seeing the thread marks it read
+      const box = (await msgStore.get(inboxId(me.email), { type: "json" })) || { threads: {} };
+      if (box.threads && box.threads[other] && box.threads[other].unread) {
+        box.threads[other].unread = 0;
+        await msgStore.setJSON(inboxId(me.email), box);
+      }
+      const rec = await users.get(other, { type: "json" });
+      const p = (rec && rec.profile) || {};
+      return json(200, {
+        messages: th.msgs || [],
+        contact: { email: other, name: p.name || other, role: p.role || "user", staffRole: p.staffRole || null },
+      });
+    }
+
+    if (req.method === "POST") {
+      let body; try { body = await req.json(); } catch { return json(400, { error: "Invalid JSON" }); }
+      const to = String(body.to || "").trim().toLowerCase();
+      const text = String(body.text || "").trim().slice(0, 2000);
+      if (!text) return json(400, { error: "Write something first" });
+      if (to === me.email) return json(400, { error: "You can't message yourself" });
+      const rec = await users.get(to, { type: "json" });
+      if (!rec) return json(404, { error: "That person doesn't have a GYMORA account yet" });
+      const theirs = rec.profile || {};
+      if (!canMessage(me.profile, theirs)) return json(403, { error: "You can't message this person" });
+      const m = { f: me.email, x: text, at: Date.now() };
+      const tid = threadId(me.email, to);
+      const th = (await msgStore.get(tid, { type: "json" })) || { a: me.email, b: to, msgs: [] };
+      th.msgs = (th.msgs || []).concat(m).slice(-300);
+      th.updatedAt = m.at;
+      await msgStore.setJSON(tid, th);
+      await bumpInbox(me.email, to, theirs.name || to, theirs.role || "user", text, m.at, 0);
+      await bumpInbox(to, me.email, me.profile.name || me.email, me.profile.role || "user", text, m.at, 1);
+      return json(200, { ok: true, message: m });
+    }
+
+    if (req.method === "PUT") { // mark a thread read
+      let body; try { body = await req.json(); } catch { return json(400, { error: "Invalid JSON" }); }
+      const other = String(body.with || "").trim().toLowerCase();
+      const box = (await msgStore.get(inboxId(me.email), { type: "json" })) || { threads: {} };
+      if (box.threads && box.threads[other]) {
+        box.threads[other].unread = 0;
+        await msgStore.setJSON(inboxId(me.email), box);
+      }
+      return json(200, { ok: true });
+    }
+  }
+
+  /* ---- who the signed-in person is allowed to message ---- */
+  if (req.method === "GET" && path === "/contacts") {
+    const me = await requester();
+    if (!me) return json(401, { error: "Not signed in" });
+    const out = [];
+    const { blobs } = await users.list();
+    for (const b of blobs) {
+      const rec = await users.get(b.key, { type: "json" });
+      if (!rec || rec.email === me.email) continue;
+      const p = rec.profile || {};
+      if (p.banned) continue;
+      if (!canMessage(me.profile, p)) continue;
+      out.push({
+        email: rec.email, name: p.name || rec.email, role: p.role || "user",
+        staffRole: p.staffRole || null, gymId: p.gymId || null, goal: p.goal || null,
+      });
+    }
+    const rank = { admin: 0, owner: 1, coach: 2, staff: 3, user: 4 };
+    out.sort((a, b) => (rank[a.role] ?? 9) - (rank[b.role] ?? 9) || a.name.localeCompare(b.name));
+    return json(200, { contacts: out });
+  }
+
+  /* =============================================================
+     ANNOUNCEMENTS — a message from GYMORA (or a gym owner) that
+     shows up inside the app for the people it targets.
+     ============================================================= */
+  const AUDIENCES = ["all", "members", "staff", "coaches", "owners"];
+  if (path === "/notices") {
+    const list = (await noticeStore.get("list", { type: "json" })) || [];
+
+    if (req.method === "GET") {
+      const me = await requester();
+      const role = me ? (me.profile.role || "user") : null;
+      const gym = me ? (me.profile.gymId || null) : null;
+      const now = Date.now();
+      const mineGym = (n) => !n.gymId || n.gymId === gym;
+      const visible = list.filter(n => {
+        if (!n.active) return false;
+        if (n.until && n.until < now) return false;
+        if (n.audience === "all") return mineGym(n);
+        if (!role) return false;
+        if (n.audience === "members") return role === "user" && mineGym(n);
+        if (n.audience === "staff") return ["coach", "staff", "owner"].includes(role) && mineGym(n);
+        if (n.audience === "coaches") return role === "coach" && mineGym(n);
+        if (n.audience === "owners") return role === "owner";
+        return false;
+      });
+      return json(200, { notices: visible.sort((a, b) => b.createdAt - a.createdAt).slice(0, 50) });
+    }
+
+    const me = await requester();
+    if (!me) return json(401, { error: "Not signed in" });
+    const myRole = me.profile.role;
+    if (myRole !== "admin" && myRole !== "owner") return json(403, { error: "Admins and gym owners only" });
+    let body; try { body = await req.json(); } catch { return json(400, { error: "Invalid JSON" }); }
+
+    if (req.method === "POST") {
+      const title = String(body.title || "").trim().slice(0, 120);
+      const text = String(body.body || "").trim().slice(0, 2000);
+      if (!title && !text) return json(400, { error: "Write a title or a message" });
+      const audience = AUDIENCES.includes(body.audience) ? body.audience : "all";
+      const n = {
+        id: "n" + Date.now() + Math.random().toString(36).slice(2, 6),
+        title, body: text, audience,
+        // a gym owner can only speak to their own gym
+        gymId: myRole === "owner" ? (me.profile.gymId || null) : (body.gymId || null),
+        kind: ["info", "warn", "good"].includes(body.kind) ? body.kind : "info",
+        until: body.until ? Number(body.until) : null,
+        createdAt: Date.now(), active: true, by: me.email, byRole: myRole,
+      };
+      if (myRole === "owner" && n.audience === "owners") n.audience = "all";
+      list.unshift(n);
+      await noticeStore.setJSON("list", list.slice(0, 200));
+      return json(200, { notice: n });
+    }
+
+    const i = list.findIndex(x => x.id === body.id);
+    if (i < 0) return json(404, { error: "Announcement not found" });
+    if (myRole === "owner" && list[i].by !== me.email) return json(403, { error: "Not your announcement" });
+
+    if (req.method === "PUT") {
+      list[i] = {
+        ...list[i],
+        active: body.active === undefined ? list[i].active : !!body.active,
+        title: body.title === undefined ? list[i].title : String(body.title).slice(0, 120),
+        body: body.body === undefined ? list[i].body : String(body.body).slice(0, 2000),
+      };
+      await noticeStore.setJSON("list", list);
+      return json(200, { notice: list[i] });
+    }
+    if (req.method === "DELETE") {
+      list.splice(i, 1);
+      await noticeStore.setJSON("list", list);
+      return json(200, { ok: true });
+    }
+  }
+
+  /* =============================================================
+     DESIGN — the look of the app, edited visually in the admin
+     console and published here. The app reads this on every open
+     and applies it over its own stylesheet, so the interface can
+     be changed without touching the code.
+     ============================================================= */
+  if (path === "/design") {
+    if (req.method === "GET") {
+      const doc = (await designStore.get("current", { type: "json" })) || null;
+      return json(200, { design: doc });
+    }
+    if (!(await adminEmail())) return json(403, { error: "Admin only" });
+    if (req.method === "PUT") {
+      let body; try { body = await req.json(); } catch { return json(400, { error: "Invalid JSON" }); }
+      const doc = body.design && typeof body.design === "object" ? body.design : {};
+      if (JSON.stringify(doc).length > 400000) return json(413, { error: "Design is too big" });
+      doc.updatedAt = Date.now();
+      // keep the previous version so a bad edit can be rolled back
+      const prev = await designStore.get("current", { type: "json" });
+      if (prev) await designStore.setJSON("previous", prev);
+      await designStore.setJSON("current", doc);
+      return json(200, { ok: true, design: doc });
+    }
+    if (req.method === "DELETE") {
+      const prev = await designStore.get("current", { type: "json" });
+      if (prev) await designStore.setJSON("previous", prev);
+      await designStore.delete("current");
+      return json(200, { ok: true });
+    }
+    if (req.method === "POST") { // restore the previous published version
+      const prev = await designStore.get("previous", { type: "json" });
+      if (!prev) return json(404, { error: "Nothing to undo" });
+      await designStore.setJSON("current", prev);
+      return json(200, { ok: true, design: prev });
+    }
   }
 
   /* ---- profile (requires Bearer token) ---- */

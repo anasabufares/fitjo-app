@@ -118,14 +118,17 @@ function ownerGym(u) { return GYMS.find(g => g.id === (u && u.gymId)) || GYMS[0]
 
 /* ---------- account nav for the current role ---------- */
 function navForRole(u) {
-  const common = [["profile", "👤", t("myProfile")], ["preferences", "⚙️", t("preferences")], ["security", "🔒", t("security")]];
-  if (u.role === "coach") return [["coach", "🧑‍🏫", t("coachPortal")], ...common];
-  if (u.role === "owner") return common; // the owner dashboard lives on the front page (My Gym circle)
-  if (u.role === "staff") return [["staff", "🪪", t("staffDash")], ...common];
+  const msg = ["messages", "💬", t("msgTab")];
+  const news = ["notices", "📣", t("ntTab")];
+  const common = [msg, news, ["preferences", "⚙️", t("preferences")], ["security", "🔒", t("security")]];
+  if (u.role === "coach") return [["coach", "🧑‍🏫", t("coachPortal")], ["profile", "👤", t("myProfile")], ...common];
+  if (u.role === "owner") return [["profile", "👤", t("myProfile")], ...common]; // the owner dashboard lives on the front page (My Gym circle)
+  if (u.role === "staff") return [["staff", "🪪", t("staffDash")], ["profile", "👤", t("myProfile")], ...common];
+  if (u.role === "admin") return [["admin", "🛠️", t("adminPortal")], ["profile", "👤", t("myProfile")], ...common];
   // regular member — side menu (nutrition/supplements/rank live on the
   // home-screen category circles; email moved inside Security)
   return [
-    ["profile", "👤", t("myProfile")], ["plan", "🎯", t("myPlan")],
+    ["profile", "👤", t("myProfile")], msg, news, ["plan", "🎯", t("myPlan")],
     ["premium", "⭐", t("pmTab")],
     ["workouts", "📋", t("workouts")], ["library", "📚", t("libTitle")],
     ["classes", "🗓️", t("clsTab")], ["progress", "📈", t("myProgress")],
@@ -162,12 +165,11 @@ function agoLabel(d) { return d <= 0 ? t("today") : d === 1 ? t("yesterday") : `
 function subAvatar(s) { return `<div class="avatar-sm portal-av">${initials(s.name)}</div>`; }
 
 /* ---------- coach portal ---------- */
-let coachMsgTo = null, coachMsgName = "";
 let coachMembers = null;   // members loaded from the cloud (or this browser)
 let coachSel = null;       // member id opened in the detail view
 
 let ownerTab = "user"; // owner team browser: "user" | "coach" | "staff"
-function resetPortals() { coachMembers = null; coachSel = null; coachMsgTo = null; ownerTab = "user"; }
+function resetPortals() { coachMembers = null; coachSel = null; ownerTab = "user"; }
 
 const gymNameOf = (id) => { const g = GYMS.find(x => x.id === id); return g ? g.name[state.lang] : null; };
 const genderName = (g) => g === "f" ? t("genderF") : g === "m" ? t("genderM") : t("genderNA");
@@ -215,18 +217,6 @@ async function loadCoachMembers(u) {
   reRenderSection();
 }
 
-function composeHTML() {
-  return coachMsgTo ? `
-    <div class="section compose">
-      <h4>✉️ ${t("message")} — ${esc(coachMsgName)}</h4>
-      <textarea id="coachMsg" class="control" rows="3" placeholder="${t("msgPlaceholder")}"></textarea>
-      <div class="ct-actions">
-        <button class="btn" id="coachSend">${t("sendMsg")}</button>
-        <button class="btn ghost" id="coachCancel">${t("cancel")}</button>
-      </div>
-    </div>` : "";
-}
-
 function coachMemberHTML(m) {
   const me = currentUser();
   const backLabel = me && me.role === "owner" ? t("ownerDash") : t("coachPortal");
@@ -240,7 +230,6 @@ function coachMemberHTML(m) {
     <div class="mh-txt"><div class="acct-name">${esc(m.name)}${m.banned ? ` <span class="pill off">${t("banned")}</span>` : ""}</div>
       <div class="acct-email">${isMember ? `🎯 ${t("memberGoal")}: <b>${goalLabel(m.goal)}</b>` : `${roleIcon(m.role)} <b>${roleLabel(m.role)}</b>`}</div></div>
   </div>
-  ${composeHTML()}
   <div class="stat-row">
     <div class="stat"><div class="n">${m.age ?? "—"}</div><div class="l">${t("age")}</div></div>
     <div class="stat"><div class="n">${m.currentKg ?? "—"}${m.currentKg != null ? "<small> kg</small>" : ""}</div><div class="l">${t("currentWeight")}</div></div>
@@ -269,7 +258,7 @@ function coachMemberHTML(m) {
     </select>
   </div>` : ""}
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <button class="btn ghost sm" data-msg="${esc(String(m.id))}" data-msg-name="${esc(m.name)}">✉️ ${t("message")}</button>
+    <button class="btn ghost sm" data-msg="${esc(String(m.id))}" data-msg-name="${esc(m.name)}" data-msg-email="${esc(m.email || "")}" data-msg-role="${esc(m.role || "user")}">✉️ ${t("message")}</button>
     ${m.phone ? `<a class="btn ghost sm" href="tel:${m.phone}">📞 ${t("callBtn")}</a>
       <a class="btn sm" style="background:#25D366;color:#fff" href="https://wa.me/${m.phone.replace("+", "")}" target="_blank" rel="noopener">🟢 WhatsApp</a>` : ""}
   </div>`;
@@ -289,7 +278,7 @@ function secCoach(u) {
   return `
   <h3>🧑‍🏫 ${t("coachPortal")}</h3>
   <div class="h-sub">${t("subsSub")}${gym ? " · " + gym : ""}</div>
-  ${composeHTML()}
+  <button class="btn ghost" id="portalMsgs" style="margin-bottom:12px">💬 ${t("msgTab")}</button>
   <div class="stat-row">
     <div class="stat"><div class="n">${subs.length}</div><div class="l">${t("subscribers")}</div></div>
     <div class="stat"><div class="n">${subs.filter(s => s.lastDays <= 1).length}</div><div class="l">${t("today")}</div></div>
@@ -332,7 +321,7 @@ function secOwner(u) {
   return `
   <h3>🏢 ${t("ownerDash")}</h3>
   <div class="h-sub">${gym.name[state.lang]} · ${t("ownerSub")}</div>
-  ${composeHTML()}
+  <button class="btn ghost" id="portalMsgs" style="margin-bottom:12px">💬 ${t("msgTab")}</button>
   <div class="stat-row">
     <div class="stat"><div class="n" style="color:var(--accent)">${head}</div><div class="l">${t("inGymNow")}</div></div>
     <div class="stat"><div class="n">${members.length}</div><div class="l">${t("totalSubs")}</div></div>
@@ -378,7 +367,8 @@ function secOwner(u) {
     </div>
     <div class="note" id="ownerKeyMsg" style="margin-top:10px;word-break:break-all">&nbsp;</div>
     <div class="portal-list" id="ownerKeyList"></div>
-  </div>`;
+  </div>
+  ${typeof noticeComposeHTML === "function" ? noticeComposeHTML("owner") : ""}`;
 }
 
 /* ---- owner access keys: cloud when signed in, this browser otherwise ---- */
@@ -449,6 +439,7 @@ function secStaff(u) {
   return `
   <h3>🪪 ${t("staffDash")}</h3>
   <div class="h-sub">${t("staffSub")}</div>
+  <button class="btn ghost" id="portalMsgs" style="margin-bottom:12px">💬 ${t("msgTab")}</button>
   <div class="note" style="margin-bottom:12px">🪪 ${t("staffRoleLabel")}: <b>${staffRoleName(u.staffRole) || t("noRoleYet")}</b> · ${ownerGym(u).name[state.lang]}</div>
   <div class="stat-row">
     <div class="stat"><div class="n">${18 + (new Date().getHours())}</div><div class="l">${t("checkinsToday")}</div></div>
@@ -482,11 +473,8 @@ function secAdmin(u) {
     <div class="stat"><div class="n">${GYMS.length}</div><div class="l">Gyms</div></div>
   </div>
   <div class="note">${t("byRole")}: ${counts}</div>
-  <div class="section">
-    <h4>📣 ${t("broadcast")}</h4>
-    <textarea id="adminMsg" class="control" rows="2" placeholder="${t("msgPlaceholder")}"></textarea>
-    <button class="btn" id="adminSend" style="margin-top:8px">${t("broadcastSend")}</button>
-  </div>
+  <button class="btn ghost" id="portalMsgs" style="margin:12px 0">💬 ${t("msgTab")}</button>
+  ${typeof noticeComposeHTML === "function" ? noticeComposeHTML("admin") : ""}
   <div class="section">
     <h4>⛔ ${t("banUser")}</h4>
     <div class="form-two" style="align-items:end">
@@ -528,10 +516,12 @@ function handlePortalChange(e) {
 function handlePortalClick(e) {
   const hit = (s) => e.target.closest(s);
   const msg = hit("[data-msg]");
-  if (msg) { coachMsgTo = msg.dataset.msg; coachMsgName = msg.dataset.msgName || ""; reRenderSection(); return true; }
-  if (hit("#coachSend")) { const v = (val("coachMsg") || "").trim(); coachMsgTo = null; reRenderSection(); toast(v ? `${t("msgSent")} ✓` : t("msgSent")); return true; }
-  if (hit("#coachCancel")) { coachMsgTo = null; reRenderSection(); return true; }
-  if (hit("#coachBack")) { coachSel = null; coachMsgTo = null; reRenderSection(); return true; }
+  if (msg && typeof openChatWith === "function") {
+    openChatWith({ id: msg.dataset.msg, name: msg.dataset.msgName || "", email: msg.dataset.msgEmail || null, role: msg.dataset.msgRole || "user" });
+    return true;
+  }
+  if (hit("#portalMsgs") && typeof gotoMsgSection === "function") { gotoMsgSection(); return true; }
+  if (hit("#coachBack")) { coachSel = null; reRenderSection(); return true; }
   const oteam = hit("[data-oteam]"); if (oteam) { ownerTab = oteam.dataset.oteam; reRenderSection(); return true; }
   const alert = hit("[data-alert]"); if (alert) { toast(t("alerted")); return true; }
   const ban = hit("[data-ban]");
@@ -554,7 +544,6 @@ function handlePortalClick(e) {
     return true;
   }
   if (hit("#staffCheckin")) { toast(t("checkedIn")); return true; }
-  if (hit("#adminSend")) { toast(`${t("broadcastSent")} ${getUsers().length}`); return true; }
   if (hit("#adminBan")) {
     const email = (val("adminBanEmail") || "").trim().toLowerCase(), users = getUsers(), i = users.findIndex(x => x.email === email);
     if (i >= 0) { users[i].banned = true; saveUsers(users); toast(t("bannedOk")); } else { toast(t("noUsers")); }
