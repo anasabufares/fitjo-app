@@ -107,8 +107,13 @@ export default async (req) => {
   /* messages must be strongly consistent: a reply written a second ago
      has to be visible to the other side immediately. */
   const msgStore = getStore({ name: "gymora-msgs", consistency: "strong" });
-  const noticeStore = getStore("gymora-notices");
-  const designStore = getStore("gymora-design");
+  /* Announcements and the published design are written and read back
+     immediately (publish → the admin console lists it → the app loads
+     it). With the default eventual consistency that read comes back
+     stale — a fresh announcement looks like it vanished and deleting
+     it 404s — so both stores read strongly. */
+  const noticeStore = getStore({ name: "gymora-notices", consistency: "strong" });
+  const designStore = getStore({ name: "gymora-design", consistency: "strong" });
 
   /* Resolve the requesting user ({ email, profile }), or null. */
   async function requester() {
