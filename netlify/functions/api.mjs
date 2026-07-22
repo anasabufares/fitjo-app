@@ -710,6 +710,16 @@ export default async (req) => {
       return json(200, { ticket: t });
     }
 
+    if (req.method === "DELETE") {                               // the member who opened it, or an admin
+      let body; try { body = await req.json(); } catch { return json(400, { error: "Invalid JSON" }); }
+      const t = await ticketStore.get("t:" + body.id, { type: "json" });
+      if (!t) return json(404, { error: "Ticket not found" });
+      if (t.by !== me.email && myRole !== "admin") return json(403, { error: "Only the person who opened it, or an admin, can delete a ticket" });
+      await ticketStore.delete("t:" + t.id);
+      await ticketStore.setJSON("list", list.filter(x => x.id !== t.id));
+      return json(200, { ok: true });
+    }
+
     if (req.method === "PUT") {                                  // change the status
       let body; try { body = await req.json(); } catch { return json(400, { error: "Invalid JSON" }); }
       const status = TICKET_STATUS.includes(body.status) ? body.status : null;

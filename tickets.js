@@ -33,6 +33,7 @@ const TICKET_I18N = {
     tkOpen: "Open", tkAnswered: "Answered", tkClosed: "Closed",
     tkAll: "All", tkStatus: "Status",
     tkClose: "Mark as closed", tkReopen: "Reopen", tkClosedOk: "Ticket closed",
+    tkDelete: "Delete this ticket", tkDeleted: "Ticket deleted",
     tkBack: "Tickets", tkFrom: "From", tkYou: "You", tkTeam: "Gym team",
     tkCatMembership: "Membership", tkCatPayment: "Payment", tkCatFacility: "Facilities",
     tkCatClass: "Classes", tkCatCoach: "My coach", tkCatOther: "Something else",
@@ -55,6 +56,7 @@ const TICKET_I18N = {
     tkOpen: "مفتوح", tkAnswered: "تمت الإجابة", tkClosed: "مغلق",
     tkAll: "الكل", tkStatus: "الحالة",
     tkClose: "إغلاق الطلب", tkReopen: "إعادة فتح", tkClosedOk: "أُغلق الطلب",
+    tkDelete: "حذف هذا الطلب", tkDeleted: "حُذف الطلب",
     tkBack: "الطلبات", tkFrom: "من", tkYou: "أنت", tkTeam: "فريق النادي",
     tkCatMembership: "الاشتراك", tkCatPayment: "الدفع", tkCatFacility: "المرافق",
     tkCatClass: "الحصص", tkCatCoach: "مدرّبي", tkCatOther: "شيء آخر",
@@ -195,7 +197,10 @@ function ticketOneHTML(u) {
     </div>
     ${tkOne.local ? `<div class="note" style="margin-bottom:8px">📵 ${t("tkOffline")}</div>` : ""}
     <div class="chat-scroll" id="chatScroll">${bubbles}</div>
-    ${closed ? `<button class="btn ghost" data-tkstatus="open">${t("tkReopen")}</button>` : `
+    ${closed ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn ghost" data-tkstatus="open">${t("tkReopen")}</button>
+        ${tkOne.by === u.email || u.role === "admin" ? `<button class="btn ghost sm" data-tkdel="${esc(tkOne.id)}" style="color:#ef4444">${t("tkDelete")}</button>` : ""}
+      </div>` : `
       <div class="chat-form">
         <textarea id="tkReplyIn" class="control" rows="1" placeholder="${t("tkReplyPh")}"></textarea>
         <button class="btn" id="tkReplyBtn" aria-label="${t("tkReply")}">➤</button>
@@ -278,6 +283,18 @@ async function setTicketStatus(status) {
   reRenderSection();
 }
 
+async function deleteTicket(id) {
+  const isLocalOnly = tkLocalAll().some(x => x.id === id);
+  if (tkCloud() && !isLocalOnly) {
+    const r = await GymoraCloud.ticketDelete(id);
+    if (!r.ok && !r.offline) { toast((r.data && r.data.error) || t("tkFailed")); return; }
+  }
+  tkLocalSave(tkLocalAll().filter(x => x.id !== id));
+  toast(t("tkDeleted"));
+  tkView = "list"; tkOne = null; tkList = null;
+  reRenderSection();
+}
+
 /* jump to the tickets screen from anywhere (e.g. the messages screen) */
 function gotoTickets() {
   tkView = "list"; tkList = null; tkOne = null;
@@ -299,6 +316,8 @@ function handleTicketClick(e) {
   if (f) { tkFilter = f.dataset.tkfilter; reRenderSection(); return true; }
   const st = hit("[data-tkstatus]");
   if (st) { void setTicketStatus(st.dataset.tkstatus); return true; }
+  const del = hit("[data-tkdel]");
+  if (del) { void deleteTicket(del.dataset.tkdel); return true; }
   const row = hit("[data-ticket]");
   if (row) {
     tkView = "one"; tkOne = null;

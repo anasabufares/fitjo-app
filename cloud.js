@@ -119,6 +119,7 @@
     ticketOpen: (subject, category, text) => callFull("/tickets", "POST", { subject, category, text }, true),
     ticketReply: (id, text) => callFull("/tickets", "POST", { id, text }, true),
     ticketStatus: (id, status) => callFull("/tickets", "PUT", { id, status }, true),
+    ticketDelete: (id) => callFull("/tickets", "DELETE", { id }, true),
 
     /* announcements written by an admin (or a gym owner) */
     notices: () => callFull("/notices", "GET", null, true),
