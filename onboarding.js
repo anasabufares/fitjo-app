@@ -387,7 +387,18 @@ async function obFinish() {
   if (isNew && window.GymoraCloud) {
     obVerifyState = { status: "sending" };
     obStep = "everify"; obRender();
-    await GymoraCloud.signup(d.email, d.password, currentUser());
+    const sr = await GymoraCloud.signup(d.email, d.password, currentUser());
+    // Backend reachable but refused it (email already registered): roll
+    // back the phantom local account and send them to sign in, instead
+    // of quietly marking a taken email as verified here.
+    if (sr && !sr.ok && !sr.offline) {
+      clearSession();
+      saveUsers(getUsers().filter(x => x.email !== d.email));
+      if (typeof toast === "function") toast(t("emailTaken"));
+      closeOnboarding(false);
+      if (typeof openAuth === "function") openAuth("signin");
+      return;
+    }
     if (GymoraCloud.hasSession()) {
       const r = await GymoraCloud.verifySend();
       if (r.ok && r.data) {

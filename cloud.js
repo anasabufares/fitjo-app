@@ -60,14 +60,18 @@
   window.GymoraCloud = {
     hasSession: () => !!getToken(),
 
-    /* create the cloud account right after a local signup */
+    /* create the cloud account right after a local signup.
+       Returns { ok, offline, error }: ok → account created (session set);
+       offline → backend unreachable (keep the local account); neither →
+       the server refused it, almost always because the email is already
+       registered — the caller should surface that, not fall to demo mode. */
     async signup(email, password, profile) {
-      const r = await call("/signup", "POST", { email, password, profile });
-      if (r && r.token) {
-        setToken(r.token);
+      const r = await callFull("/signup", "POST", { email, password, profile });
+      if (r.ok && r.data && r.data.token) {
+        setToken(r.data.token);
         if (pendingProfile) { const p = pendingProfile; pendingProfile = null; this.pushSoon(p); }
       }
-      return r;
+      return { ok: r.ok, offline: r.offline, error: r.data && r.data.error, profile: r.data && r.data.profile };
     },
 
     /* staff-role signup: the backend validates & consumes the access

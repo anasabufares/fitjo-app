@@ -683,7 +683,17 @@ async function handleSignUp() {
   }
 
   const nu = createUser({ name, email, age, pw, role, gymId }); setSession(email);
-  if (window.GymoraCloud) GymoraCloud.signup(email, pw, nu); // background: create the cloud account
+  if (window.GymoraCloud) {
+    const r = await GymoraCloud.signup(email, pw, nu); // create the cloud account
+    // Backend reachable but refused it (almost always: email already
+    // registered). Roll back the local account and say so, instead of
+    // dropping into the offline demo-code screen.
+    if (r && !r.ok && !r.offline) {
+      clearSession();
+      saveUsers(getUsers().filter(x => x.email !== email));
+      return showErr(t("emailTaken"));
+    }
+  }
   startVerify();
 }
 function handleGoogle() {
