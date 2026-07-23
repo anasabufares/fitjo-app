@@ -98,6 +98,12 @@
     .tabbtn { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 700; }
     .tabbtn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
     .act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .dbcard { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+    .dbrow { display: flex; align-items: center; gap: 10px; }
+    .dblbl { font-family: "Barlow Condensed", sans-serif; text-transform: uppercase; letter-spacing: .04em; font-size: 20px; font-weight: 700; }
+    #dbBadge.mongo { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+    #dbBadge.blobs { background: rgba(245, 158, 11, .16); color: #f59e0b; }
 
     /* ---- announcements ---- */
     .ann-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; }
@@ -182,6 +188,16 @@
 
     <div class="wrap" id="panelMain">
       <div class="src" id="srcNote"></div>
+
+      <div class="dbcard" id="dbCard">
+        <div style="min-width:0">
+          <div class="dbrow"><span class="dblbl">Database</span><span class="pill role" id="dbBadge">checking…</span></div>
+          <div class="note" id="dbHint" style="padding:6px 0 0">Where all accounts, messages, tickets and gyms are stored.</div>
+        </div>
+        <button class="act primary" id="migrateBtn" style="display:none;margin:0;white-space:nowrap">⤴ Copy existing data into MongoDB</button>
+      </div>
+      <div class="note" id="migrateMsg" style="display:none;padding:0 0 10px"></div>
+
       <div class="tiles" id="tiles"></div>
 
       <h2>This week's check-ins</h2>
@@ -379,10 +395,43 @@
       if (window.AdminStudio) AdminStudio.mount({ token, mode, email: meEmail });
     });
 
+    /* ---------- database status + one-time migration ---------- */
+    async function refreshDbStatus() {
+      const badge = $("#dbBadge"), hint = $("#dbHint"), btn = $("#migrateBtn");
+      let storage = null;
+      try { const r = await fetch(API + "/health"); if (r.ok) storage = (await r.json()).storage; } catch (e) {}
+      if (storage === "mongodb") {
+        badge.textContent = "MongoDB"; badge.className = "pill role mongo";
+        hint.innerHTML = "Running on your MongoDB database. ✅";
+        if (mode === "cloud") btn.style.display = "";
+      } else if (storage === "netlify-blobs") {
+        badge.textContent = "Netlify Blobs (built-in)"; badge.className = "pill role blobs";
+        hint.innerHTML = "Set <b>MONGODB_URI</b> in Netlify and redeploy to switch to MongoDB.";
+        btn.style.display = "none";
+      } else {
+        badge.textContent = "unknown"; badge.className = "pill role";
+        hint.textContent = "Couldn't reach the backend.";
+        btn.style.display = "none";
+      }
+    }
+    $("#migrateBtn").addEventListener("click", async () => {
+      if (!confirm("Copy every account, message, ticket, gym and setting from the old storage into MongoDB? Safe to run more than once.")) return;
+      const msg = $("#migrateMsg");
+      msg.style.display = "block"; msg.textContent = "Copying…";
+      try {
+        const r = await fetch(API + "/admin/migrate", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: "{}" });
+        const d = await r.json();
+        if (!r.ok) { msg.textContent = d.error || "Migration failed."; return; }
+        const lines = Object.entries(d.copied || {}).map(([k, v]) => `${k.replace("gymora-", "")}: ${v}`).join(" · ");
+        msg.innerHTML = "✅ Copied into MongoDB — " + lines;
+      } catch (e) { msg.textContent = "Migration failed — is the backend reachable?"; }
+    });
+
     async function open() {
       $("#login").style.display = "none";
       $("#dash").style.display = "block";
       $("#who").textContent = meEmail;
+      refreshDbStatus();
       rows = await loadUsers();
       $("#srcNote").innerHTML = mode === "cloud"
         ? "Data source: <b>cloud</b> — all registered accounts across devices."

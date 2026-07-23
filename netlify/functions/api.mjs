@@ -21,6 +21,64 @@
 import { getStore } from "@netlify/blobs";
 import { scryptSync, randomBytes, createHmac, timingSafeEqual, createHash, createCipheriv, createDecipheriv } from "node:crypto";
 
+/* =============================================================
+   STORAGE — a real MongoDB database when configured, else Netlify Blobs
+   -------------------------------------------------------------
+   GYMORA was built on Netlify Blobs (a key/value store). Setting the
+   MONGODB_URI environment variable switches every store to a real
+   MongoDB database with NO change to the routes below: this adapter
+   exposes the exact handful of methods the code already uses
+   (get / setJSON / delete / list), each store becoming one MongoDB
+   collection keyed by _id. MongoDB reads hit the primary, so they are
+   already strongly consistent — the reason Blobs needed the explicit
+   "strong" option. Without MONGODB_URI nothing changes: the app keeps
+   running on Netlify Blobs exactly as before, and the mongodb driver
+   is never even loaded (dynamic import), so a missing package can't
+   affect the Blobs path.
+   ============================================================= */
+const MONGO_URI = process.env.MONGODB_URI || "";
+const USE_MONGO = !!MONGO_URI;
+const MONGO_DB = process.env.MONGODB_DB || "gymora";
+
+let _mongoClientPromise = null;
+async function mongoDb() {
+  if (!_mongoClientPromise) {
+    const { MongoClient } = await import("mongodb");
+    const client = new MongoClient(MONGO_URI, { maxPoolSize: 5, serverSelectionTimeoutMS: 8000 });
+    // cache the connect() promise so warm invocations reuse one pool
+    _mongoClientPromise = client.connect();
+  }
+  return (await _mongoClientPromise).db(MONGO_DB);
+}
+
+/* A store backed by one MongoDB collection, matching the Blobs API. */
+function mongoStore(name) {
+  const coll = async () => (await mongoDb()).collection(name);
+  return {
+    async get(key /* , opts */) {
+      const doc = await (await coll()).findOne({ _id: String(key) });
+      return doc ? doc.value : null;   // Blobs {type:"json"} returned the parsed value; so do we
+    },
+    async setJSON(key, value) {
+      await (await coll()).updateOne({ _id: String(key) }, { $set: { value } }, { upsert: true });
+    },
+    async set(key, value) { return this.setJSON(key, value); },
+    async delete(key) {
+      await (await coll()).deleteOne({ _id: String(key) });
+    },
+    async list() {
+      const docs = await (await coll()).find({}, { projection: { _id: 1 } }).toArray();
+      return { blobs: docs.map(d => ({ key: d._id })) };
+    },
+  };
+}
+
+/* getStore-compatible: accepts "name" or { name, consistency } */
+const storeName = (arg) => (typeof arg === "string" ? arg : (arg && arg.name));
+function store(arg) {
+  return USE_MONGO ? mongoStore(storeName(arg)) : getStore(arg);
+}
+
 const SECRET = process.env.JWT_SECRET || "gymora-dev-secret-change-me";
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
@@ -101,20 +159,20 @@ export default async (req) => {
      silently take over the account), and an access key could be
      consumed twice. The public gym list stays eventual — it's read on
      every app open and a propagation delay there is harmless. */
-  const users = getStore({ name: "gymora-users", consistency: "strong" });
-  const gymsStore = getStore("gymora-gyms");
-  const keysStore = getStore({ name: "gymora-keys", consistency: "strong" });
+  const users = store({ name: "gymora-users", consistency: "strong" });
+  const gymsStore = store("gymora-gyms");
+  const keysStore = store({ name: "gymora-keys", consistency: "strong" });
   /* messages must be strongly consistent: a reply written a second ago
      has to be visible to the other side immediately. */
-  const msgStore = getStore({ name: "gymora-msgs", consistency: "strong" });
+  const msgStore = store({ name: "gymora-msgs", consistency: "strong" });
   /* Announcements and the published design are written and read back
      immediately (publish → the admin console lists it → the app loads
      it). With the default eventual consistency that read comes back
      stale — a fresh announcement looks like it vanished and deleting
      it 404s — so both stores read strongly. */
-  const noticeStore = getStore({ name: "gymora-notices", consistency: "strong" });
-  const ticketStore = getStore({ name: "gymora-tickets", consistency: "strong" });
-  const designStore = getStore({ name: "gymora-design", consistency: "strong" });
+  const noticeStore = store({ name: "gymora-notices", consistency: "strong" });
+  const ticketStore = store({ name: "gymora-tickets", consistency: "strong" });
+  const designStore = store({ name: "gymora-design", consistency: "strong" });
 
   /* Resolve the requesting user ({ email, profile }), or null. */
   async function requester() {
@@ -131,7 +189,39 @@ export default async (req) => {
     return me && me.profile.role === "admin" ? me.email : null;
   }
 
-  if (req.method === "GET" && path === "/health") return json(200, { ok: true, service: "gymora-api" });
+  if (req.method === "GET" && path === "/health") {
+    return json(200, { ok: true, service: "gymora-api", storage: USE_MONGO ? "mongodb" : "netlify-blobs" });
+  }
+
+  /* ---- one-time data migration: copy everything from Netlify Blobs
+     into the new MongoDB database. Safe to run more than once (each
+     record is upserted). Authorised by an admin account OR by a
+     MIGRATE_TOKEN env var (so it works even before your admin account
+     exists in the new database — set the token, run once, remove it). */
+  if (req.method === "POST" && path === "/admin/migrate") {
+    let body = {}; try { body = await req.json(); } catch {}
+    const tokenOk = process.env.MIGRATE_TOKEN && body.token === process.env.MIGRATE_TOKEN;
+    if (!tokenOk && !(await adminEmail())) return json(403, { error: "Admin only (or a valid MIGRATE_TOKEN)" });
+    if (!USE_MONGO) return json(400, { error: "Set MONGODB_URI and redeploy first — there is no new database to copy into yet." });
+    const names = ["gymora-users", "gymora-gyms", "gymora-keys", "gymora-msgs", "gymora-notices", "gymora-tickets", "gymora-design"];
+    const report = {};
+    for (const name of names) {
+      try {
+        const src = getStore({ name, consistency: "strong" });   // always the Blobs source
+        const dst = mongoStore(name);                             // the Mongo destination
+        const { blobs } = await src.list();
+        let copied = 0;
+        for (const b of blobs) {
+          const val = await src.get(b.key, { type: "json" });
+          if (val == null) continue;
+          await dst.setJSON(b.key, val);
+          copied++;
+        }
+        report[name] = copied;
+      } catch (e) { report[name] = "error: " + (e && e.message); }
+    }
+    return json(200, { ok: true, into: MONGO_DB, copied: report });
+  }
 
   /* ---- gyms: public read (the app loads its gym list from here) ---- */
   if (req.method === "GET" && path === "/gyms") {

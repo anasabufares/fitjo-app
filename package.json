@@ -5,6 +5,7 @@
   "description": "GYMORA — gym finder and fitness app (static site + Netlify functions)",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
-    "@netlify/blobs": "^10.0.10"
+    "@netlify/blobs": "^10.0.10",
+    "mongodb": "^6.12.0"
   }
 }
