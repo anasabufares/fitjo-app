@@ -136,6 +136,7 @@
             <div class="tabs">
               <button class="tab active" id="tabAll">All gyms</button>
               <button class="tab" id="tabFav">Favorites</button>
+              <button class="tab near-btn" id="nearMeBtn"><span class="near-ico">📍</span><span id="nearMeLbl">Near me</span></button>
             </div>
             <span class="count" id="resultCount"></span>
           </div>
@@ -177,10 +178,13 @@
 
   <!-- Quick check-in (one tap → camera → points) -->
   <button class="fab-checkin" id="quickCheckin" aria-label="Check in" title="Check in">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/>
-    </svg>
-    <span class="fab-plus">+</span>
+    <span class="fab-ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/>
+      </svg>
+      <span class="fab-plus">+</span>
+    </span>
+    <span class="fab-label" id="fabLabel">Check in</span>
   </button>
   <input id="quickCheckinInput" type="file" accept="image/*" capture="environment" hidden />
 

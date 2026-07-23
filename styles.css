@@ -1321,3 +1321,21 @@ h1, .hero h1, .acct-body h3 { letter-spacing: -.02em; font-weight: 900; }
 .pill.tk-answered { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
 .pill.tk-closed { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
 .bubble .b-who { display: block; font-size: 10px; font-weight: 800; opacity: .65; margin-bottom: 2px; text-transform: uppercase; letter-spacing: .04em; }
+
+/* ---------- "Near me" button (in the results header) ---------- */
+.near-btn { display: inline-flex; align-items: center; gap: 6px; }
+.near-btn .near-ico { font-size: 13px; line-height: 1; }
+.near-btn.active { background: var(--accent-grad); color: #fff; box-shadow: 0 4px 14px -6px color-mix(in srgb, var(--accent) 70%, transparent); }
+.near-btn.locating { opacity: .7; pointer-events: none; }
+
+/* distance badge on gym cards when "Near me" is on */
+.badge-dist { background: var(--accent-grad); color: #fff; }
+
+/* ---------- labeled check-in button (extended FAB) ---------- */
+.fab-checkin { width: auto; height: 56px; border-radius: 999px; padding-inline: 8px 20px; gap: 10px;
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; }
+.fab-ico { position: relative; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(255, 255, 255, .16); flex-shrink: 0; }
+.fab-ico svg { width: 24px; height: 24px; }
+.fab-label { white-space: nowrap; padding-inline-end: 2px; }
+.fab-checkin .fab-plus { top: -3px; inset-inline-end: -3px; }

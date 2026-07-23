@@ -16,6 +16,8 @@ const state = {
   view: "list",           // list | detail
   currentGym: null,
   gymsLive: false,        // true once real gyms load from the backend database
+  nearMe: false,          // "Near me": sort gyms by distance from the user
+  userPos: null,          // { lat, lng } once the user shares their location
   compare: [],            // gym ids selected for comparison (max 3)
   filtersOpen: (localStorage.getItem("fj_filtersOpen") ?? (window.innerWidth > 860 ? "true" : "false")) === "true",
   filters: { q: "", area: "", facilities: [], pool: "any", access: "any", minAge: 0, maxPrice: 80, sort: "rating", open247: false },
@@ -119,7 +121,18 @@ function filteredGyms() {
   if (f.sort === "rating") list.sort((a, b) => b.rating - a.rating);
   if (f.sort === "priceLow") list.sort((a, b) => monthlyJOD(a) - monthlyJOD(b));
   if (f.sort === "priceHigh") list.sort((a, b) => monthlyJOD(b) - monthlyJOD(a));
+  // "Near me" overrides the sort: closest gyms first (those with no
+  // coordinates fall to the end).
+  if (state.nearMe && state.userPos && typeof distKm === "function") {
+    const d = (g) => g.loc ? distKm(state.userPos, g.loc) : Infinity;
+    list.sort((a, b) => d(a) - d(b));
+  }
   return list;
+}
+/* distance from the user to a gym, in km, or null when unavailable */
+function gymDistanceKm(g) {
+  if (!state.nearMe || !state.userPos || !g.loc || typeof distKm !== "function") return null;
+  return distKm(state.userPos, g.loc);
 }
 
 /* ---------- Render: top bar controls ---------- */
@@ -146,6 +159,8 @@ function renderStaticText() {
   $("#heroSub").textContent = t("heroSub");
   $("#searchInput").placeholder = t("searchPlaceholder");
   $("#searchInput").value = state.filters.q;
+  const fab = document.getElementById("fabLabel");
+  if (fab) fab.textContent = t("fabCheckin");
 }
 
 /* ---------- Render: filters panel ---------- */
@@ -216,6 +231,9 @@ function renderResults() {
   $("#tabFav").textContent = `${t("favorites")} (${state.favorites.length})`;
   $("#tabAll").classList.toggle("active", state.tab === "all");
   $("#tabFav").classList.toggle("active", state.tab === "favorites");
+  const nearBtn = $("#nearMeBtn"), nearLbl = $("#nearMeLbl");
+  if (nearLbl) nearLbl.textContent = t("nearMe");
+  if (nearBtn) nearBtn.classList.toggle("active", state.nearMe);
 
   const list = filteredGyms();
   $("#resultCount").textContent = `${list.length} ${t("resultsFound")}`;
@@ -232,6 +250,7 @@ const PIN_ICO = `<svg class="fico pin" viewBox="0 0 24 24" fill="none" stroke="c
 function cardHTML(g) {
   const isFav = state.favorites.includes(g.id);
   const inCmp = state.compare.includes(g.id);
+  const dist = gymDistanceKm(g);
   const occ = occupancy(g);
   const occLabel = t("occ" + occ.level[0].toUpperCase() + occ.level.slice(1));
   const accessLabel = { mixed: t("accessMixed"), women: t("accessWomen"), men: t("accessMen") }[g.gender];
@@ -243,6 +262,7 @@ function cardHTML(g) {
       <div class="badges">
         <span class="badge">${accessLabel}${g.pool ? " · 🏊" : ""}</span>
         ${g.open247 ? `<span class="badge badge-247">🕛 ${t("h247")}</span>` : ""}
+        ${dist != null ? `<span class="badge badge-dist">📍 ${dist < 1 ? Math.round(dist * 1000) + " m" : dist.toFixed(1) + " " + t("kmAway")}</span>` : ""}
       </div>
       <button class="fav ${isFav ? "on" : ""}" data-fav="${g.id}" aria-label="favorite">${isFav ? "♥" : "♡"}</button>
     </div>
@@ -590,6 +610,20 @@ function bind() {
   // tabs
   $("#tabAll").onclick = () => { state.tab = "all"; showList(); renderResults(); };
   $("#tabFav").onclick = () => { state.tab = "favorites"; showList(); renderResults(); };
+
+  // "Near me": toggle off if already on, otherwise ask for location and sort by distance
+  $("#nearMeBtn").onclick = async () => {
+    if (state.nearMe) { state.nearMe = false; renderResults(); return; }
+    const btn = $("#nearMeBtn"), lbl = $("#nearMeLbl");
+    btn.classList.add("locating"); if (lbl) lbl.textContent = t("nearLocating");
+    const pos = (typeof getPosition === "function") ? await getPosition() : null;
+    btn.classList.remove("locating");
+    if (!pos) { toast(t("nearFail")); renderResults(); return; }
+    state.userPos = pos; state.nearMe = true;
+    if (state.view === "detail") showList();
+    renderResults();
+    toast(t("nearOn"));
+  };
 
   // grid + detail delegated clicks
   const mustSignIn = () => {
