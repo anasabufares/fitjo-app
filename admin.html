@@ -368,16 +368,31 @@
       }
       open();
     }
-    async function removeUser(email) {
+    async function removeUser(email, btn) {
       if (!confirm("Delete " + email + "? This can't be undone.")) return;
+      // Instant feedback: hide the row right away and update the count,
+      // then delete on the server in the background. If the server
+      // refuses (e.g. "can't delete yourself") we put the row back.
+      const row = btn ? btn.closest("tr") : null;
+      const tile = document.querySelector("#tiles .tile .n");
+      if (row) row.style.display = "none";
+      if (tile) tile.textContent = Math.max(0, rows.length - 1);
+      const restore = (msg) => { if (row) row.style.display = ""; if (tile) tile.textContent = rows.length; if (msg) alert(msg); };
+
       if (mode === "cloud") {
-        const r = await fetch(API + "/admin/users", { method: "DELETE", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify({ email }) });
-        if (!r.ok) { alert((await r.json()).error || "Failed"); return; }
+        let r;
+        try {
+          r = await fetch(API + "/admin/users", { method: "DELETE", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify({ email }) });
+        } catch (e) { return restore("Couldn't reach the server — the account was not deleted."); }
+        if (!r.ok) { const d = await r.json().catch(() => ({})); return restore(d.error || "Delete failed."); }
       } else {
         const users = JSON.parse(localStorage.getItem("fj_users") || "[]").filter(x => x.email !== email);
         localStorage.setItem("fj_users", JSON.stringify(users));
       }
-      open();
+      // gone for good — drop it from the row and remove the element, no full reload
+      rows = rows.filter(x => x.email !== email);
+      if (row) row.remove();
+      if (tile) tile.textContent = rows.length;
     }
 
     /* ---------- render ---------- */
@@ -680,7 +695,7 @@
       const ban = e.target.closest("[data-ban]");
       if (ban) return void setBanned(ban.dataset.ban, ban.dataset.to === "1");
       const del = e.target.closest("[data-del]");
-      if (del) return void removeUser(del.dataset.del);
+      if (del) return void removeUser(del.dataset.del, del);
       const eg = e.target.closest("[data-editgym]");
       if (eg) return openEditor(gymList.find(x => x.id === eg.dataset.editgym));
       const dg = e.target.closest("[data-delgym]");
